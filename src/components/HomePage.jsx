@@ -39,6 +39,16 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   const [activeSlide, setActiveSlide]           = useState(0);
   const [imageSliderPos, setImageSliderPos]     = useState(50);
 
+  // Sandbox Playground State
+  const [sandboxContrast, setSandboxContrast] = useState(100);
+  const [sandboxSaturation, setSandboxSaturation] = useState(100);
+  const [sandboxLut, setSandboxLut] = useState("reset");
+  const [sandboxRatio, setSandboxRatio] = useState("16/9");
+  const [sandboxText, setSandboxText] = useState("Your Cinematic Vision");
+
+  // Interactive Gallery State
+  const [hoveredTemplate, setHoveredTemplate] = useState(null);
+
   const prompts = [
     "cinematic retro synthwave skyline, 3d render...",
     "elegant minimalist swan logo, vector...",
@@ -127,7 +137,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
     requestAnimationFrame(step);
   };
 
-  // Three.js background
+  // Three.js background (Plexus Particle Network)
   useEffect(() => {
     if (!canvasRef.current) return;
     let cleanup;
@@ -142,46 +152,193 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
 
         const scene  = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 12);
+        camera.position.set(0, 0, 15);
 
-        const shapes = [];
-        const geos   = [new THREE.IcosahedronGeometry(1,0), new THREE.OctahedronGeometry(1,0), new THREE.TorusGeometry(0.8,0.25,8,16)];
-        const colors = [0x8b5a2b, 0xd4a574, 0xa0522d, 0xc49a6c, 0xdeb887];
+        // 120 particles
+        const particleCount = 120;
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
 
-        for (let i = 0; i < 20; i++) {
-          const mat = new THREE.MeshPhongMaterial({
-            color: colors[i % colors.length], transparent: true, opacity: 0.1 + Math.random() * 0.15,
-            wireframe: Math.random() > 0.4
+        for (let i = 0; i < particleCount; i++) {
+          const x = (Math.random() - 0.5) * 35;
+          const y = (Math.random() - 0.5) * 20;
+          const z = (Math.random() - 0.5) * 15;
+          positions[i * 3] = x;
+          positions[i * 3 + 1] = y;
+          positions[i * 3 + 2] = z;
+          
+          velocities.push({
+            x: (Math.random() - 0.5) * 0.015,
+            y: (Math.random() - 0.5) * 0.015,
+            z: (Math.random() - 0.5) * 0.01
           });
-          const mesh = new THREE.Mesh(geos[i % geos.length], mat);
-          mesh.position.set((Math.random()-0.5)*28, (Math.random()-0.5)*16, (Math.random()-0.5)*10-2);
-          const s = 0.4 + Math.random() * 1.4; mesh.scale.setScalar(s);
-          mesh.userData = { rx:(Math.random()-0.5)*0.008, ry:(Math.random()-0.5)*0.008 };
-          scene.add(mesh); shapes.push(mesh);
         }
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.3));
-        const dl = new THREE.DirectionalLight(0x8b5a2b, 1.2); dl.position.set(5,5,5); scene.add(dl);
-        const pl = new THREE.PointLight(0xc49a6c, 1.5, 30); pl.position.set(0,0,5); scene.add(pl);
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-        let mx = 0, my = 0, t = 0;
-        const mm = e => { mx = (e.clientX/window.innerWidth-0.5)*2; my = (e.clientY/window.innerHeight-0.5)*2; };
+        // Create canvas-based particle texture for soft glowing circles
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = 16;
+        pCanvas.height = 16;
+        const ctx = pCanvas.getContext('2d');
+        const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+        grad.addColorStop(0, 'rgba(212, 165, 116, 1)');
+        grad.addColorStop(1, 'rgba(212, 165, 116, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 16, 16);
+        const pTexture = new THREE.CanvasTexture(pCanvas);
+
+        const particleMaterial = new THREE.PointsMaterial({
+          size: 0.28,
+          map: pTexture,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        });
+
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // Dynamic Line Segments
+        const maxLines = 400;
+        const linePositions = new Float32Array(maxLines * 6);
+        const lineColors = new Float32Array(maxLines * 6);
+        const lineGeometry = new THREE.BufferGeometry();
+        lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+        lineGeometry.setAttribute('color', new THREE.BufferAttribute(lineColors, 3));
+        
+        const lineMaterial = new THREE.LineBasicMaterial({
+          vertexColors: true,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          opacity: 0.35
+        });
+        
+        const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
+        scene.add(lines);
+
+        let mx = 0, my = 0, targetMx = 0, targetMy = 0;
+        const mm = e => {
+          targetMx = (e.clientX / window.innerWidth - 0.5) * 2;
+          targetMy = (e.clientY / window.innerHeight - 0.5) * 2;
+        };
         window.addEventListener("mousemove", mm);
 
+        let animationFrameId;
         const animate = () => {
-          requestAnimationFrame(animate); t += 0.008;
-          shapes.forEach(m => { m.rotation.x += m.userData.rx; m.rotation.y += m.userData.ry; });
-          camera.position.x += (mx * 1.5 - camera.position.x) * 0.03;
-          camera.position.y += (-my * 0.8 - camera.position.y) * 0.03;
-          camera.lookAt(0,0,0);
-          pl.position.set(Math.sin(t)*4, Math.cos(t*0.7)*3, 5);
+          animationFrameId = requestAnimationFrame(animate);
+          
+          mx += (targetMx - mx) * 0.08;
+          my += (targetMy - my) * 0.08;
+
+          const posAttr = particleGeometry.attributes.position;
+          let lineIndex = 0;
+
+          // Mouse coordinate projected coordinates
+          const mouse3D = new THREE.Vector3(mx * 16, -my * 10, 0);
+
+          for (let i = 0; i < particleCount; i++) {
+            let px = posAttr.getX(i);
+            let py = posAttr.getY(i);
+            let pz = posAttr.getZ(i);
+
+            px += velocities[i].x;
+            py += velocities[i].y;
+            pz += velocities[i].z;
+
+            const boxX = 22, boxY = 13, boxZ = 10;
+            if (px > boxX || px < -boxX) velocities[i].x *= -1;
+            if (py > boxY || py < -boxY) velocities[i].y *= -1;
+            if (pz > boxZ || pz < -boxZ) velocities[i].z *= -1;
+
+            const dx = px - mouse3D.x;
+            const dy = py - mouse3D.y;
+            const dz = pz - mouse3D.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 5) {
+              const force = (5 - dist) * 0.02;
+              px += (dx / dist) * force;
+              py += (dy / dist) * force;
+              pz += (dz / dist) * force;
+            }
+
+            posAttr.setXYZ(i, px, py, pz);
+          }
+          posAttr.needsUpdate = true;
+
+          const lp = lineGeometry.attributes.position.array;
+          const lc = lineGeometry.attributes.color.array;
+          
+          for (let i = 0; i < particleCount; i++) {
+            const ix = posAttr.getX(i);
+            const iy = posAttr.getY(i);
+            const iz = posAttr.getZ(i);
+
+            for (let j = i + 1; j < particleCount; j++) {
+              if (lineIndex >= maxLines) break;
+
+              const jx = posAttr.getX(j);
+              const jy = posAttr.getY(j);
+              const jz = posAttr.getZ(j);
+
+              const dx = ix - jx;
+              const dy = iy - jy;
+              const dz = iz - jz;
+              const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+              if (dist < 6) {
+                const alpha = (6 - dist) / 6;
+                
+                lp[lineIndex * 6] = ix;
+                lp[lineIndex * 6 + 1] = iy;
+                lp[lineIndex * 6 + 2] = iz;
+                lp[lineIndex * 6 + 3] = jx;
+                lp[lineIndex * 6 + 4] = jy;
+                lp[lineIndex * 6 + 5] = jz;
+
+                lc[lineIndex * 6] = 212/255 * alpha;
+                lc[lineIndex * 6 + 1] = 165/255 * alpha;
+                lc[lineIndex * 6 + 2] = 116/255 * alpha;
+
+                lc[lineIndex * 6 + 3] = 139/255 * alpha;
+                lc[lineIndex * 6 + 4] = 90/255 * alpha;
+                lc[lineIndex * 6 + 5] = 43/255 * alpha;
+
+                lineIndex++;
+              }
+            }
+          }
+
+          for (let i = lineIndex; i < maxLines; i++) {
+            lp[i * 6] = 0; lp[i * 6 + 1] = 0; lp[i * 6 + 2] = 0;
+            lp[i * 6 + 3] = 0; lp[i * 6 + 4] = 0; lp[i * 6 + 5] = 0;
+          }
+          lineGeometry.attributes.position.needsUpdate = true;
+          lineGeometry.attributes.color.needsUpdate = true;
+
+          camera.position.x += (mx * 4 - camera.position.x) * 0.05;
+          camera.position.y += (-my * 3 - camera.position.y) * 0.05;
+          camera.lookAt(0, 0, 0);
+
           renderer.render(scene, camera);
         };
         animate();
 
-        const onResize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+        const onResize = () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        };
         window.addEventListener("resize", onResize);
-        cleanup = () => { window.removeEventListener("mousemove", mm); window.removeEventListener("resize", onResize); renderer.dispose(); };
+        
+        cleanup = () => {
+          window.removeEventListener("mousemove", mm);
+          window.removeEventListener("resize", onResize);
+          cancelAnimationFrame(animationFrameId);
+          renderer.dispose();
+        };
       } catch(e) { console.log("Three.js error:", e); }
     })();
     return () => cleanup && cleanup();
@@ -387,6 +544,310 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
         </div>
       </div>
 
+      {/* ── INTERACTIVE DESIGN SANDBOX PLAYGROUND ── */}
+      <section className="reveal" id="sandbox-section" style={{
+        padding: "100px 48px",
+        maxWidth: "1400px",
+        margin: "0 auto",
+        opacity: revealedSections.has("sandbox-section") ? 1 : 0,
+        transform: revealedSections.has("sandbox-section") ? "translateY(0)" : "translateY(40px)",
+        transition: "opacity 0.7s, transform 0.7s"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "56px", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "14px", fontWeight: 500 }}>Live Testing</div>
+            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,60px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text }}>Creative Sandbox.</h2>
+          </div>
+          <p style={{ fontSize: "16px", color: colors.textMuted, maxWidth: "440px", lineHeight: 1.65, fontWeight: 300 }}>
+            Don't take our word for it. Test our core real-time color grading, overlay engines, and aspect scaling features directly inside this mock studio.
+          </p>
+        </div>
+
+        {/* Sandbox Editor Layout */}
+        <div style={{
+          display: "flex",
+          gap: "40px",
+          alignItems: "stretch",
+          background: isDark ? "rgba(12, 10, 9, 0.7)" : "rgba(250, 248, 245, 0.7)",
+          border: `1px solid ${colors.border}`,
+          borderRadius: "32px",
+          padding: "40px",
+          backdropFilter: "blur(24px)",
+          boxShadow: colors.cardShadow,
+          flexDirection: "row",
+          flexWrap: "wrap"
+        }}>
+          {/* Left Side: Mock Editor Viewport */}
+          <div style={{
+            flex: "1 1 500px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#0c0a09",
+            borderRadius: "20px",
+            padding: "24px",
+            border: "1px solid rgba(212, 165, 116, 0.12)",
+            minHeight: "450px",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            {/* Editor Top Bar Mockup */}
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "36px",
+              background: "#131110",
+              borderBottom: "1px solid rgba(212, 165, 116, 0.08)",
+              display: "flex",
+              alignItems: "center",
+              padding: "0 16px",
+              justifyContent: "space-between",
+              zIndex: 10
+            }}>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444" }} />
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f5c842" }} />
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22d3a8" }} />
+              </div>
+              <span style={{ fontSize: "9px", color: "#8c8780", fontWeight: 600, letterSpacing: "0.06em" }}>MONITOR_CINE_01.MP4</span>
+              <div style={{ width: "24px" }} />
+            </div>
+
+            {/* Sizable Canvas Container */}
+            <div style={{
+              position: "relative",
+              background: "#131110",
+              borderRadius: "12px",
+              overflow: "hidden",
+              border: "1px solid rgba(212, 165, 116, 0.15)",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+              aspectRatio: sandboxRatio,
+              width: sandboxRatio === "16/9" ? "100%" : sandboxRatio === "9/16" ? "250px" : "360px",
+              maxHeight: "360px"
+            }}>
+              {/* Sample Background Video Image */}
+              <img src={videoPrev} alt="Mock clip" style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                filter: `
+                  contrast(${sandboxContrast}%)
+                  saturate(${sandboxSaturation}%)
+                  ${sandboxLut === "vintage" ? "sepia(0.45) saturate(1.4) hue-rotate(-10deg)" : ""}
+                  ${sandboxLut === "cyber" ? "hue-rotate(90deg) saturate(1.8) contrast(1.2)" : ""}
+                  ${sandboxLut === "noir" ? "grayscale(1) contrast(1.5) brightness(0.9)" : ""}
+                  ${sandboxLut === "dreamy" ? "brightness(1.1) saturate(1.3) sepia(0.12)" : ""}
+                `,
+                transition: "filter 0.3s ease"
+              }} />
+
+              {/* Dynamic Overlay Text */}
+              {sandboxText && (
+                <div style={{
+                  position: "absolute",
+                  bottom: "16%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "rgba(12, 10, 9, 0.88)",
+                  border: "1px solid #d4a574",
+                  color: "#fff",
+                  padding: sandboxRatio === "9/16" ? "6px 10px" : "8px 18px",
+                  borderRadius: "8px",
+                  fontSize: sandboxRatio === "9/16" ? "10px" : "14px",
+                  fontFamily: "'Poppins', sans-serif",
+                  fontWeight: 500,
+                  whiteSpace: "nowrap",
+                  textAlign: "center",
+                  boxShadow: "0 4px 20px rgba(139, 90, 43, 0.25)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  maxWidth: "90%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}>
+                  {sandboxText}
+                </div>
+              )}
+
+              {/* Monitor overlays */}
+              <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,0.5)", borderRadius: "4px", padding: "2px 6px", fontSize: "8px", color: "#fff", fontFamily: "monospace" }}>
+                {sandboxRatio === "16/9" ? "3840×2160 (16:9)" : sandboxRatio === "9/16" ? "2160×3840 (9:16)" : "2160×2160 (1:1)"}
+              </div>
+            </div>
+
+            {/* Simulated Timeline Track at bottom */}
+            <div style={{
+              width: "100%",
+              marginTop: "20px",
+              background: "#131110",
+              border: "1px solid rgba(212, 165, 116, 0.08)",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px"
+            }}>
+              <div style={{ color: "#d4a574", fontSize: "11px", fontWeight: 700 }}>▶</div>
+              <div style={{ flex: 1, position: "relative", height: "4px", background: "rgba(255,255,255,0.08)", borderRadius: "2px" }}>
+                <div style={{ position: "absolute", left: "30%", top: 0, bottom: 0, right: 0, background: "rgba(212,165,116,0.15)", borderRadius: "2px" }} />
+                <div style={{ position: "absolute", left: "45%", top: "-4px", width: "12px", height: "12px", background: "#ef4444", borderRadius: "50%", boxShadow: "0 0 6px rgba(239,68,68,0.5)" }} />
+              </div>
+              <div style={{ fontSize: "9px", color: "#8c8780", fontFamily: "monospace" }}>00:04:12</div>
+            </div>
+          </div>
+
+          {/* Right Side: Editor Controls Panel */}
+          <div style={{
+            flex: "1 1 380px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "24px",
+            justifyContent: "center"
+          }}>
+            {/* Aspect Ratio Selector */}
+            <div>
+              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "12px", textTransform: "uppercase" }}>Aspect Ratio</div>
+              <div style={{ display: "flex", gap: "10px" }}>
+                {[
+                  { ratio: "16/9", label: "Landscape (16:9)", icon: "📺" },
+                  { ratio: "9/16", label: "Portrait (9:16)", icon: "📱" },
+                  { ratio: "1/1", label: "Square (1:1)", icon: "🔳" }
+                ].map(r => (
+                  <button
+                    key={r.ratio}
+                    onClick={() => { setSandboxRatio(r.ratio); setCursorHovered(true); }}
+                    style={{
+                      flex: 1,
+                      padding: "12px 6px",
+                      borderRadius: "12px",
+                      background: sandboxRatio === r.ratio ? "linear-gradient(135deg,#8b5a2b,#a0522d)" : "rgba(139,90,43,0.06)",
+                      border: sandboxRatio === r.ratio ? "1px solid transparent" : `1px solid ${colors.border}`,
+                      color: sandboxRatio === r.ratio ? "#fff" : colors.text,
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.25s",
+                      outline: "none"
+                    }}
+                    onMouseEnter={() => setCursorHovered(true)}
+                    onMouseLeave={() => setCursorHovered(false)}
+                  >
+                    <span style={{ fontSize: "16px" }}>{r.icon}</span>
+                    {r.label.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Color LUT Presets */}
+            <div>
+              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "12px", textTransform: "uppercase" }}>Cinematic Color Preset (LUT)</div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {[
+                  { id: "reset", name: "Standard ↺" },
+                  { id: "vintage", name: "Vintage Gold 🍂" },
+                  { id: "cyber", name: "Cyber Mint 🧪" },
+                  { id: "noir", name: "Classic Noir 🎬" },
+                  { id: "dreamy", name: "Dreamy Sun ☀️" }
+                ].map(lut => (
+                  <button
+                    key={lut.id}
+                    onClick={() => { setSandboxLut(lut.id); setCursorHovered(true); }}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "8px",
+                      background: sandboxLut === lut.id ? "rgba(212,165,116,0.18)" : "none",
+                      border: sandboxLut === lut.id ? "1px solid #d4a574" : `1px solid ${colors.border}`,
+                      color: sandboxLut === lut.id ? "#d4a574" : colors.textMuted,
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      transition: "all 0.2s",
+                      outline: "none"
+                    }}
+                    onMouseEnter={() => setCursorHovered(true)}
+                    onMouseLeave={() => setCursorHovered(false)}
+                  >
+                    {lut.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filter Sliders */}
+            <div>
+              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "16px", textTransform: "uppercase" }}>Fine-Tuning Filters</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px", color: colors.textMuted }}>
+                    <span>Contrast</span>
+                    <span style={{ fontWeight: 600, color: colors.text }}>{sandboxContrast}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="40"
+                    max="200"
+                    value={sandboxContrast}
+                    onChange={e => setSandboxContrast(parseInt(e.target.value))}
+                    style={{ width: "100%", height: "4px", borderRadius: "2px", accentColor: "#d4a574", cursor: "pointer" }}
+                  />
+                </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px", color: colors.textMuted }}>
+                    <span>Saturation</span>
+                    <span style={{ fontWeight: 600, color: colors.text }}>{sandboxSaturation}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    value={sandboxSaturation}
+                    onChange={e => setSandboxSaturation(parseInt(e.target.value))}
+                    style={{ width: "100%", height: "4px", borderRadius: "2px", accentColor: "#d4a574", cursor: "pointer" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Custom Overlay Text */}
+            <div>
+              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase" }}>Text Overlay Title</div>
+              <input
+                type="text"
+                value={sandboxText}
+                onChange={e => setSandboxText(e.target.value)}
+                maxLength={24}
+                placeholder="Type dynamic watermark..."
+                style={{
+                  width: "100%",
+                  background: isDark ? "#0c0a09" : "#fff",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "10px",
+                  color: colors.text,
+                  fontSize: "13px",
+                  padding: "10px 14px",
+                  outline: "none",
+                  transition: "border-color 0.2s"
+                }}
+                onFocus={e => e.target.style.borderColor = "#d4a574"}
+                onBlur={e => e.target.style.borderColor = colors.border}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── BENTO GRID TOOLS SECTION ─────────────────────────────────────── */}
       <div id="tools">
         <div className="reveal" id="tools-section" style={{
@@ -591,6 +1052,209 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
             <div style={{ position:"absolute", width:"120px", height:"80px", top:"20px", left:"80px", borderRadius:"12px", background:"linear-gradient(135deg,rgba(212,165,116,0.3),rgba(196,154,108,0.2))", border:"1px solid rgba(212,165,116,0.3)", animation:"float1 4s ease-in-out infinite" }} />
             <div style={{ position:"absolute", width:"80px", height:"100px", top:"40px", right:"30px", borderRadius:"12px", background:"linear-gradient(135deg,rgba(139,90,43,0.3),rgba(245,200,66,0.2))", border:"1px solid rgba(139,90,43,0.3)", animation:"float2 5s ease-in-out infinite" }} />
           </div>
+        </div>
+      </section>
+
+      {/* ── HIGH-FIDELITY PRODUCTION PIPELINE ── */}
+      <section className="reveal" id="pipeline-section" style={{
+        background: colors.bg,
+        borderBottom: `1px solid ${colors.border}`,
+        opacity: revealedSections.has("pipeline-section") ? 1 : 0,
+        transform: revealedSections.has("pipeline-section") ? "translateY(0)" : "translateY(40px)",
+        transition: "opacity 0.7s, transform 0.7s, background 0.3s, border-color 0.3s"
+      }}>
+        <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "100px 48px" }}>
+          <div style={{ textAlign: "center", marginBottom: "72px" }}>
+            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "16px", fontWeight: 500 }}>High-Performance Engine</div>
+            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,56px)", fontWeight: 800, letterSpacing: "-0.04em", color: colors.text, lineHeight: 1 }}>How it compiles.</h2>
+            <p style={{ fontSize: "16px", color: colors.textMuted, maxWidth: "540px", margin: "16px auto 0", lineHeight: 1.6, fontWeight: 300 }}>
+              Running natively inside your browser. No remote servers processing your raw footage — everything compiles locally.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "40px", position: "relative" }}>
+            {/* Step 1 */}
+            <div style={{
+              background: isDark ? "rgba(23, 21, 20, 0.4)" : "rgba(139, 90, 43, 0.03)",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "20px",
+              padding: "36px",
+              position: "relative",
+              overflow: "hidden",
+              transition: "transform 0.3s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "none"}
+            >
+              <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: "64px", fontStyle: "italic", color: "#d4a574", lineHeight: 1, marginBottom: "20px" }}>01</div>
+              <h3 style={{ fontFamily: "Syne,sans-serif", fontSize: "18px", fontWeight: 800, marginBottom: "12px", color: colors.text }}>Local Asset Ingestion</h3>
+              <p style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.6, fontWeight: 300, margin: 0 }}>
+                Direct file system access via File System Access API. Video clips, audio tracks, and images load instantly into memory. Zero upload buffering.
+              </p>
+              {/* Micro decoration: simulated files importing */}
+              <div style={{ display: "flex", gap: "8px", marginTop: "24px" }}>
+                {["📹 MOV", "🎵 WAV", "🖼️ PNG"].map((ext, idx) => (
+                  <div key={idx} style={{ padding: "4px 8px", background: "rgba(212, 165, 116, 0.08)", border: "1px solid rgba(212, 165, 116, 0.2)", borderRadius: "6px", fontSize: "9px", color: "#d4a574", fontWeight: 600 }}>
+                    {ext}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div style={{
+              background: isDark ? "rgba(23, 21, 20, 0.4)" : "rgba(139, 90, 43, 0.03)",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "20px",
+              padding: "36px",
+              position: "relative",
+              overflow: "hidden",
+              transition: "transform 0.3s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "none"}
+            >
+              <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: "64px", fontStyle: "italic", color: "#d4a574", lineHeight: 1, marginBottom: "20px" }}>02</div>
+              <h3 style={{ fontFamily: "Syne,sans-serif", fontSize: "18px", fontWeight: 800, marginBottom: "12px", color: colors.text }}>GPU Shader Compositing</h3>
+              <p style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.6, fontWeight: 300, margin: 0 }}>
+                WebGL fragment shaders process contrast, exposure, and color grades. High-speed filters, transitions, and overlays calculate frame-by-frame on your GPU at a locked 60fps.
+              </p>
+              {/* Micro decoration: dynamic grid visual */}
+              <div style={{ display: "flex", gap: "3px", marginTop: "28px", height: "16px", alignItems: "flex-end" }}>
+                {[6, 12, 8, 14, 10, 16, 11, 7, 13, 9, 15, 8].map((h, idx) => (
+                  <div key={idx} style={{ flex: 1, height: `${h}px`, background: "linear-gradient(to top, #8b5a2b, #22d3a8)", borderRadius: "1px" }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{
+              background: isDark ? "rgba(23, 21, 20, 0.4)" : "rgba(139, 90, 43, 0.03)",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "20px",
+              padding: "36px",
+              position: "relative",
+              overflow: "hidden",
+              transition: "transform 0.3s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "none"}
+            >
+              <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: "64px", fontStyle: "italic", color: "#d4a574", lineHeight: 1, marginBottom: "20px" }}>03</div>
+              <h3 style={{ fontFamily: "Syne,sans-serif", fontSize: "18px", fontWeight: 800, marginBottom: "12px", color: colors.text }}>Local WebAssembly Render</h3>
+              <p style={{ fontSize: "13.5px", color: colors.textMuted, lineHeight: 1.6, fontWeight: 300, margin: 0 }}>
+                A multi-threaded WebAssembly build of FFmpeg compiles final tracks directly to an MP4 video bundle. No network charges, no server waiting queues.
+              </p>
+              {/* Micro decoration: progress indicator */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "24px" }}>
+                <div style={{ width: "20px", height: "20px", borderRadius: "50%", border: "2px solid #22d3a8", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
+                <span style={{ fontSize: "10px", color: "#22d3a8", fontWeight: 700, letterSpacing: "0.04em" }}>COMPILING MP4 DIRECT...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── INTERACTIVE TEMPLATES SHOWCASE GALLERY ── */}
+      <section className="reveal" id="templates-showcase" style={{
+        padding: "100px 48px",
+        maxWidth: "1400px",
+        margin: "0 auto",
+        opacity: revealedSections.has("templates-showcase") ? 1 : 0,
+        transform: revealedSections.has("templates-showcase") ? "translateY(0)" : "translateY(40px)",
+        transition: "opacity 0.7s, transform 0.7s"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "56px", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "14px", fontWeight: 500 }}>High-end starting points</div>
+            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,60px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text }}>Creative presets.</h2>
+          </div>
+          <p style={{ fontSize: "16px", color: colors.textMuted, maxWidth: "440px", lineHeight: 1.65, fontWeight: 300 }}>
+            Choose from a catalog of premium designs. Launch directly into the studio workspace with pre-configured timelines.
+          </p>
+        </div>
+
+        {/* Templates Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px" }}>
+          {[
+            { id: "cinema", name: "Cinematic Intro", desc: "Warm amber color LUT, cinematic aspect ratio, title fades.", ratio: "16:9", stats: "4K UHD · 24 FPS · 15s", image: videoPrev, color: "#8b5a2b", type: "editor" },
+            { id: "pitch", name: "Startup Pitch Deck", desc: "Minimalist slide architecture, charts, dynamic animations.", ratio: "16:9", stats: "10 Slides · Vector · 30 FPS", image: pptPrev, color: "#a0522d", type: "presentation" },
+            { id: "reel", name: "Social Glitch Reel", desc: "Glitch transition overlays, text safe zone grids.", ratio: "9:16", stats: "1080p · 60 FPS · 30s", image: socialPrev, color: "#c49a6c", type: "editor" },
+            { id: "brand", name: "Branding Kit Studio", desc: "Vector grids, matching fonts, dynamic color guides.", ratio: "1:1", stats: "Vectors · SVG · CMYK", image: imagePrev, color: "#d4a574", type: "auth" }
+          ].map(tpl => {
+            const isHovered = hoveredTemplate === tpl.id;
+            return (
+              <div
+                key={tpl.id}
+                onMouseEnter={() => { setHoveredTemplate(tpl.id); setCursorHovered(true); }}
+                onMouseLeave={() => { setHoveredTemplate(null); setCursorHovered(false); }}
+                onClick={() => onNavigate(tpl.type, "signup")}
+                style={{
+                  background: isDark ? "rgba(12, 10, 9, 0.6)" : "rgba(255, 255, 255, 0.6)",
+                  border: `1px solid ${isHovered ? tpl.color : colors.border}`,
+                  borderRadius: "24px",
+                  padding: "16px",
+                  cursor: "pointer",
+                  transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                  transform: isHovered ? "translateY(-4px)" : "none",
+                  boxShadow: isHovered ? `0 20px 40px ${tpl.color}15` : colors.cardShadow,
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%"
+                }}
+              >
+                {/* Mockup Preview Area */}
+                <div style={{
+                  position: "relative",
+                  aspectRatio: "16/10",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  background: "#131110",
+                  marginBottom: "20px"
+                }}>
+                  <img src={tpl.image} alt={tpl.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s", transform: isHovered ? "scale(1.05)" : "none" }} />
+                  <div style={{ position: "absolute", inset: 0, background: isHovered ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.5)", transition: "background 0.35s" }} />
+                  {/* Badge */}
+                  <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 8px", borderRadius: "20px", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)", fontSize: "9px", color: tpl.color, fontWeight: 700, border: `1px solid ${tpl.color}40` }}>
+                    {tpl.ratio} Format
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                  <h3 style={{ fontFamily: "Syne,sans-serif", fontSize: "16px", fontWeight: 800, color: colors.text, marginBottom: "8px", letterSpacing: "-0.02em" }}>{tpl.name}</h3>
+                  <p style={{ fontSize: "12.5px", color: colors.textMuted, lineHeight: 1.5, fontWeight: 300, margin: "0 0 16px 0", flex: 1 }}>
+                    {tpl.desc}
+                  </p>
+                  
+                  {/* Stats & Launch CTA */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTop: `1px solid ${colors.border}`,
+                    paddingTop: "12px",
+                    marginTop: "auto"
+                  }}>
+                    <span style={{ fontSize: "10px", color: colors.textMuted, fontWeight: 500, fontFamily: "monospace" }}>{tpl.stats}</span>
+                    <span style={{
+                      fontSize: "11px",
+                      color: tpl.color,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      opacity: isHovered ? 1 : 0.7,
+                      transform: isHovered ? "translateX(4px)" : "none",
+                      transition: "all 0.3s"
+                    }}>
+                      Use ➔
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
