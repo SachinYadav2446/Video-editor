@@ -56,15 +56,11 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   const [activeSlide, setActiveSlide]           = useState(0);
   const [imageSliderPos, setImageSliderPos]     = useState(50);
 
-  // Sandbox Playground State
-  const [sandboxContrast, setSandboxContrast] = useState(100);
-  const [sandboxSaturation, setSandboxSaturation] = useState(100);
-  const [sandboxLut, setSandboxLut] = useState("reset");
-  const [sandboxRatio, setSandboxRatio] = useState("16/9");
-  const [sandboxText, setSandboxText] = useState("Your Cinematic Vision");
-
   // Interactive Gallery State
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
+  const [hoveredWork, setHoveredWork]         = useState(null);
+  const pastWorkScrollRef = useRef(null);
+
 
   const prompts = [
     "cinematic retro synthwave skyline, 3d render...",
@@ -404,9 +400,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   return (
     <div style={{ margin:0, padding:0, width:"100%", background:colors.bg, color:colors.text, fontFamily:"'Instrument Sans',sans-serif", overflowX:"hidden", transition:"background 0.3s, color 0.3s" }}>
 
-      {/* Custom cursor */}
-      <div style={{ position:"fixed", width:cursorHovered?"20px":"12px", height:cursorHovered?"20px":"12px", background:"#8b5a2b", borderRadius:"50%", pointerEvents:"none", zIndex:9999, transform:"translate(-50%,-50%)", transition:"width 0.3s,height 0.3s", left:mousePosition.x, top:mousePosition.y, mixBlendMode: isDark ? "screen" : "multiply" }} />
-      <div style={{ position:"fixed", width:cursorHovered?"60px":"40px", height:cursorHovered?"60px":"40px", border: isDark ? "1px solid rgba(212,165,116,0.5)" : "1px solid rgba(139,90,43,0.5)", borderRadius:"50%", pointerEvents:"none", zIndex:9998, transform:"translate(-50%,-50%)", transition:"width 0.3s,height 0.3s", left:mousePosition.x, top:mousePosition.y }} />
+
 
       {/* ── Premium Nav ── */}
       <nav style={{ position:"fixed", top:0, left:0, right:0, width:"100%", zIndex:100, padding: navScrolled ? "0 40px" : "0 48px", height: navScrolled ? "58px" : "68px", display:"flex", alignItems:"center", backdropFilter:"blur(32px) saturate(200%)", background: navScrolled ? (isDark ? "rgba(12,10,9,0.97)" : "rgba(250,248,245,0.97)") : colors.navBg, borderBottom:`1px solid ${navScrolled ? colors.border : "transparent"}`, boxShadow: navScrolled ? (isDark ? "0 4px 40px rgba(0,0,0,0.35)" : "0 4px 40px rgba(139,90,43,0.08)") : "none", transition:"all 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
@@ -427,7 +421,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
         </div>
 
         {/* Nav links – smooth scroll within homepage */}
-        <div style={{ display:"flex", marginLeft:"32px", flex:1, gap:"2px", alignItems:"center" }}>
+        <div style={{ display:"flex", marginLeft:"auto", gap:"2px", alignItems:"center", paddingRight:"32px" }}>
           {[
             { label:"home",      id:null,                 text:"Home" },
             { label:"tools",     id:"tools-section",      text:"Tools" },
@@ -554,6 +548,20 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
       {/* Hero */}
       <section style={{ position:"relative", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
         <canvas ref={canvasRef} style={{ position:"absolute", inset:0, zIndex:0 }} />
+
+        {/* ── Grid overlay – fades away around the center text ── */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+          backgroundImage: `linear-gradient(${
+            isDark ? "rgba(212,165,116,0.07)" : "rgba(139,90,43,0.06)"
+          } 1px, transparent 1px), linear-gradient(90deg, ${
+            isDark ? "rgba(212,165,116,0.07)" : "rgba(139,90,43,0.06)"
+          } 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+          maskImage: "radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, black 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 55% 55% at 50% 50%, transparent 0%, black 100%)",
+        }} />
+
         <div style={{ position:"absolute", width:"600px", height:"600px", borderRadius:"50%", filter:"blur(80px)", background:"rgba(139,90,43,0.08)", top:"-200px", right:"-100px", pointerEvents:"none", zIndex:0 }} />
         <div style={{ position:"absolute", width:"500px", height:"500px", borderRadius:"50%", filter:"blur(80px)", background:"rgba(212,165,116,0.07)", bottom:"-100px", left:"-150px", pointerEvents:"none", zIndex:0 }} />
 
@@ -595,307 +603,310 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
         </div>
       </div>
 
-      {/* ── INTERACTIVE DESIGN SANDBOX PLAYGROUND ── */}
-      <section className="reveal" id="sandbox-section" style={{
-        padding: "100px 48px",
-        maxWidth: "1400px",
-        margin: "0 auto",
-        opacity: revealedSections.has("sandbox-section") ? 1 : 0,
-        transform: revealedSections.has("sandbox-section") ? "translateY(0)" : "translateY(40px)",
-        transition: "opacity 0.7s, transform 0.7s"
+      {/* ── PAST WORK — Side-Scrollable Showcase ── */}
+      <section className="reveal" id="past-work-section" style={{
+        padding: "100px 0",
+        background: isDark ? "#0c0a09" : "#faf8f5",
+        opacity: revealedSections.has("past-work-section") ? 1 : 0,
+        transform: revealedSections.has("past-work-section") ? "translateY(0)" : "translateY(40px)",
+        transition: "opacity 0.7s, transform 0.7s",
+        overflow: "hidden",
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "56px", flexWrap: "wrap", gap: "16px" }}>
+        {/* Section header */}
+        <div style={{ padding: "0 48px", marginBottom: "48px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
           <div>
-            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "14px", fontWeight: 500 }}>Live Testing</div>
-            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,60px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text }}>Creative Sandbox.</h2>
+            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "14px", fontWeight: 500 }}>Made with Creatify</div>
+            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,60px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text, margin: 0 }}>
+              Past Work.
+            </h2>
           </div>
-          <p style={{ fontSize: "16px", color: colors.textMuted, maxWidth: "440px", lineHeight: 1.65, fontWeight: 300 }}>
-            Don't take our word for it. Test our core real-time color grading, overlay engines, and aspect scaling features directly inside this mock studio.
-          </p>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <p style={{ fontSize: "15px", color: colors.textMuted, maxWidth: "360px", lineHeight: 1.6, fontWeight: 300, margin: 0 }}>
+              Real projects crafted by creators using every tool in the suite.
+            </p>
+            {/* Scroll arrows */}
+            <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+              {[
+                { dir: -1, icon: "←" },
+                { dir:  1, icon: "→" },
+              ].map(({ dir, icon }) => (
+                <button
+                  key={dir}
+                  onClick={() => {
+                    if (pastWorkScrollRef.current) {
+                      pastWorkScrollRef.current.scrollBy({ left: dir * 440, behavior: "smooth" });
+                    }
+                  }}
+                  style={{
+                    width: "44px", height: "44px", borderRadius: "50%",
+                    background: isDark ? "rgba(212,165,116,0.1)" : "rgba(139,90,43,0.08)",
+                    border: `1px solid ${colors.border}`,
+                    color: colors.text, fontSize: "18px", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 0.2s", outline: "none", flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#8b5a2b"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "#8b5a2b"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isDark ? "rgba(212,165,116,0.1)" : "rgba(139,90,43,0.08)"; e.currentTarget.style.color = colors.text; e.currentTarget.style.borderColor = colors.border; }}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Sandbox Editor Layout */}
-        <div style={{
-          display: "flex",
-          gap: "40px",
-          alignItems: "stretch",
-          background: isDark ? "rgba(12, 10, 9, 0.7)" : "rgba(250, 248, 245, 0.7)",
-          border: `1px solid ${colors.border}`,
-          borderRadius: "32px",
-          padding: "40px",
-          backdropFilter: "blur(24px)",
-          boxShadow: colors.cardShadow,
-          flexDirection: "row",
-          flexWrap: "wrap"
-        }}>
-          {/* Left Side: Mock Editor Viewport */}
-          <div style={{
-            flex: "1 1 500px",
+        {/* Horizontal scroll track */}
+        <div
+          ref={pastWorkScrollRef}
+          style={{
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#0c0a09",
-            borderRadius: "20px",
-            padding: "24px",
-            border: "1px solid rgba(212, 165, 116, 0.12)",
-            minHeight: "450px",
-            position: "relative",
-            overflow: "hidden"
-          }}>
-            {/* Editor Top Bar Mockup */}
-            <div style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "36px",
-              background: "#131110",
-              borderBottom: "1px solid rgba(212, 165, 116, 0.08)",
-              display: "flex",
-              alignItems: "center",
-              padding: "0 16px",
-              justifyContent: "space-between",
-              zIndex: 10
-            }}>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444" }} />
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f5c842" }} />
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22d3a8" }} />
-              </div>
-              <span style={{ fontSize: "9px", color: "#8c8780", fontWeight: 600, letterSpacing: "0.06em" }}>MONITOR_CINE_01.MP4</span>
-              <div style={{ width: "24px" }} />
-            </div>
-
-            {/* Sizable Canvas Container */}
-            <div style={{
-              position: "relative",
-              background: "#131110",
-              borderRadius: "12px",
-              overflow: "hidden",
-              border: "1px solid rgba(212, 165, 116, 0.15)",
-              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-              aspectRatio: sandboxRatio,
-              width: sandboxRatio === "16/9" ? "100%" : sandboxRatio === "9/16" ? "250px" : "360px",
-              maxHeight: "360px"
-            }}>
-              {/* Sample Background Video Image */}
-              <img src={videoPrev} alt="Mock clip" style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                filter: `
-                  contrast(${sandboxContrast}%)
-                  saturate(${sandboxSaturation}%)
-                  ${sandboxLut === "vintage" ? "sepia(0.45) saturate(1.4) hue-rotate(-10deg)" : ""}
-                  ${sandboxLut === "cyber" ? "hue-rotate(90deg) saturate(1.8) contrast(1.2)" : ""}
-                  ${sandboxLut === "noir" ? "grayscale(1) contrast(1.5) brightness(0.9)" : ""}
-                  ${sandboxLut === "dreamy" ? "brightness(1.1) saturate(1.3) sepia(0.12)" : ""}
-                `,
-                transition: "filter 0.3s ease"
-              }} />
-
-              {/* Dynamic Overlay Text */}
-              {sandboxText && (
-                <div style={{
-                  position: "absolute",
-                  bottom: "16%",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  background: "rgba(12, 10, 9, 0.88)",
-                  border: "1px solid #d4a574",
-                  color: "#fff",
-                  padding: sandboxRatio === "9/16" ? "6px 10px" : "8px 18px",
-                  borderRadius: "8px",
-                  fontSize: sandboxRatio === "9/16" ? "10px" : "14px",
-                  fontFamily: "'Poppins', sans-serif",
-                  fontWeight: 500,
-                  whiteSpace: "nowrap",
-                  textAlign: "center",
-                  boxShadow: "0 4px 20px rgba(139, 90, 43, 0.25)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                  maxWidth: "90%",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}>
-                  {sandboxText}
-                </div>
-              )}
-
-              {/* Monitor overlays */}
-              <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,0.5)", borderRadius: "4px", padding: "2px 6px", fontSize: "8px", color: "#fff", fontFamily: "monospace" }}>
-                {sandboxRatio === "16/9" ? "3840×2160 (16:9)" : sandboxRatio === "9/16" ? "2160×3840 (9:16)" : "2160×2160 (1:1)"}
-              </div>
-            </div>
-
-            {/* Simulated Timeline Track at bottom */}
-            <div style={{
-              width: "100%",
-              marginTop: "20px",
-              background: "#131110",
-              border: "1px solid rgba(212, 165, 116, 0.08)",
-              borderRadius: "10px",
-              padding: "10px 14px",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px"
-            }}>
-              <div style={{ color: "#d4a574", fontSize: "11px", fontWeight: 700 }}>▶</div>
-              <div style={{ flex: 1, position: "relative", height: "4px", background: "rgba(255,255,255,0.08)", borderRadius: "2px" }}>
-                <div style={{ position: "absolute", left: "30%", top: 0, bottom: 0, right: 0, background: "rgba(212,165,116,0.15)", borderRadius: "2px" }} />
-                <div style={{ position: "absolute", left: "45%", top: "-4px", width: "12px", height: "12px", background: "#ef4444", borderRadius: "50%", boxShadow: "0 0 6px rgba(239,68,68,0.5)" }} />
-              </div>
-              <div style={{ fontSize: "9px", color: "#8c8780", fontFamily: "monospace" }}>00:04:12</div>
-            </div>
-          </div>
-
-          {/* Right Side: Editor Controls Panel */}
-          <div style={{
-            flex: "1 1 380px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "24px",
-            justifyContent: "center"
-          }}>
-            {/* Aspect Ratio Selector */}
-            <div>
-              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "12px", textTransform: "uppercase" }}>Aspect Ratio</div>
-              <div style={{ display: "flex", gap: "10px" }}>
-                {[
-                  { ratio: "16/9", label: "Landscape (16:9)", icon: "📺" },
-                  { ratio: "9/16", label: "Portrait (9:16)", icon: "📱" },
-                  { ratio: "1/1", label: "Square (1:1)", icon: "🔳" }
-                ].map(r => (
-                  <button
-                    key={r.ratio}
-                    onClick={() => { setSandboxRatio(r.ratio); setCursorHovered(true); }}
-                    style={{
-                      flex: 1,
-                      padding: "12px 6px",
-                      borderRadius: "12px",
-                      background: sandboxRatio === r.ratio ? "linear-gradient(135deg,#8b5a2b,#a0522d)" : "rgba(139,90,43,0.06)",
-                      border: sandboxRatio === r.ratio ? "1px solid transparent" : `1px solid ${colors.border}`,
-                      color: sandboxRatio === r.ratio ? "#fff" : colors.text,
-                      cursor: "pointer",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "6px",
-                      transition: "all 0.25s",
-                      outline: "none"
-                    }}
-                    onMouseEnter={() => setCursorHovered(true)}
-                    onMouseLeave={() => setCursorHovered(false)}
-                  >
-                    <span style={{ fontSize: "16px" }}>{r.icon}</span>
-                    {r.label.split(" ")[0]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Color LUT Presets */}
-            <div>
-              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "12px", textTransform: "uppercase" }}>Cinematic Color Preset (LUT)</div>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {[
-                  { id: "reset", name: "Standard ↺" },
-                  { id: "vintage", name: "Vintage Gold 🍂" },
-                  { id: "cyber", name: "Cyber Mint 🧪" },
-                  { id: "noir", name: "Classic Noir 🎬" },
-                  { id: "dreamy", name: "Dreamy Sun ☀️" }
-                ].map(lut => (
-                  <button
-                    key={lut.id}
-                    onClick={() => { setSandboxLut(lut.id); setCursorHovered(true); }}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: "8px",
-                      background: sandboxLut === lut.id ? "rgba(212,165,116,0.18)" : "none",
-                      border: sandboxLut === lut.id ? "1px solid #d4a574" : `1px solid ${colors.border}`,
-                      color: sandboxLut === lut.id ? "#d4a574" : colors.textMuted,
-                      cursor: "pointer",
-                      fontSize: "11px",
-                      fontWeight: 500,
-                      transition: "all 0.2s",
-                      outline: "none"
-                    }}
-                    onMouseEnter={() => setCursorHovered(true)}
-                    onMouseLeave={() => setCursorHovered(false)}
-                  >
-                    {lut.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filter Sliders */}
-            <div>
-              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "16px", textTransform: "uppercase" }}>Fine-Tuning Filters</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px", color: colors.textMuted }}>
-                    <span>Contrast</span>
-                    <span style={{ fontWeight: 600, color: colors.text }}>{sandboxContrast}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="40"
-                    max="200"
-                    value={sandboxContrast}
-                    onChange={e => setSandboxContrast(parseInt(e.target.value))}
-                    style={{ width: "100%", height: "4px", borderRadius: "2px", accentColor: "#d4a574", cursor: "pointer" }}
-                  />
-                </div>
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "12px", color: colors.textMuted }}>
-                    <span>Saturation</span>
-                    <span style={{ fontWeight: 600, color: colors.text }}>{sandboxSaturation}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="200"
-                    value={sandboxSaturation}
-                    onChange={e => setSandboxSaturation(parseInt(e.target.value))}
-                    style={{ width: "100%", height: "4px", borderRadius: "2px", accentColor: "#d4a574", cursor: "pointer" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Custom Overlay Text */}
-            <div>
-              <div style={{ fontSize: "11px", letterSpacing: "0.08em", color: "#d4a574", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase" }}>Text Overlay Title</div>
-              <input
-                type="text"
-                value={sandboxText}
-                onChange={e => setSandboxText(e.target.value)}
-                maxLength={24}
-                placeholder="Type dynamic watermark..."
+            gap: "20px",
+            overflowX: "auto",
+            scrollSnapType: "x mandatory",
+            scrollbarWidth: "none",   /* Firefox */
+            msOverflowStyle: "none", /* IE/Edge */
+            paddingLeft: "48px",
+            paddingRight: "48px",
+            paddingBottom: "8px",
+          }}
+        >
+          {[
+            {
+              id: "w1",
+              title: "Neon Nights — Brand Film",
+              category: "Video Edit",
+              tool: "Video Editor",
+              toolColor: "#8b5a2b",
+              duration: "2:34",
+              resolution: "4K",
+              desc: "A cinematic brand film for a streetwear label. Color graded with a custom teal-orange LUT, multi-track audio design.",
+              gradient: "linear-gradient(135deg, #0d0d18 0%, #1a0f2e 40%, #2d1f5e 100%)",
+              accent: "#7c5cbf",
+              icon: "🎬",
+              tags: ["Color Grade", "Audio Mix", "4K Export"],
+              year: "2024",
+            },
+            {
+              id: "w2",
+              title: "Solstice — Pitch Deck",
+              category: "Presentation",
+              tool: "Presentation Maker",
+              toolColor: "#a0522d",
+              duration: "24 slides",
+              resolution: "16:9",
+              desc: "Series A pitch deck for a climate-tech startup. Full motion transitions, embedded data charts, and investor-ready PDF export.",
+              gradient: "linear-gradient(135deg, #0a1a0f 0%, #0f2d1a 40%, #1a4d2e 100%)",
+              accent: "#22d3a8",
+              icon: "📊",
+              tags: ["Animation", "PDF Export", "Brand Kit"],
+              year: "2024",
+            },
+            {
+              id: "w3",
+              title: "Aurum — Visual Identity",
+              category: "Brand Design",
+              tool: "Logo Maker",
+              toolColor: "#c49a6c",
+              duration: "12 assets",
+              resolution: "SVG · PDF",
+              desc: "Full brand identity system for a luxury jewelry house. Logo, wordmark, icon variants, color palette, and usage guidelines.",
+              gradient: "linear-gradient(135deg, #1a1207 0%, #2d2010 40%, #4d3820 100%)",
+              accent: "#f5c842",
+              icon: "✨",
+              tags: ["SVG Export", "Brand Kit", "AI-Assisted"],
+              year: "2023",
+            },
+            {
+              id: "w4",
+              title: "Haze — Music Video Reel",
+              category: "Social Media",
+              tool: "Social Studio",
+              toolColor: "#d4a574",
+              duration: "0:58",
+              resolution: "9:16 · 4K",
+              desc: "Vertical short-form reel for an indie artist single. Beat-synced cuts, animated lyric overlays, published across TikTok and Reels.",
+              gradient: "linear-gradient(135deg, #1a0a0a 0%, #2d1010 40%, #4d1820 100%)",
+              accent: "#f87171",
+              icon: "🎵",
+              tags: ["Reels", "Beat Sync", "Auto-Publish"],
+              year: "2024",
+            },
+            {
+              id: "w5",
+              title: "Blueprint — App Launch Kit",
+              category: "Image Design",
+              tool: "Image Editor",
+              toolColor: "#6b8bbf",
+              duration: "32 assets",
+              resolution: "2x PNG · WEBP",
+              desc: "Complete app store launch kit — screenshots, feature graphics, social banners, and press kit assets for a SaaS product launch.",
+              gradient: "linear-gradient(135deg, #07101a 0%, #0f1e2d 40%, #1a3a52 100%)",
+              accent: "#60a5fa",
+              icon: "🖥️",
+              tags: ["Batch Export", "Layer Masks", "Smart Resize"],
+              year: "2025",
+            },
+            {
+              id: "w6",
+              title: "Flare — Event Poster Series",
+              category: "Print Design",
+              tool: "Print Design",
+              toolColor: "#8b5a2b",
+              duration: "6 posters",
+              resolution: "A1 · CMYK",
+              desc: "Six-piece poster series for an underground music festival. Print-ready CMYK with bleed lines, foil simulation, and spot-colour guide.",
+              gradient: "linear-gradient(135deg, #1a0d07 0%, #2d1a07 40%, #4d2e10 100%)",
+              accent: "#fb923c",
+              icon: "🎸",
+              tags: ["CMYK", "Bleed Lines", "Print-Ready"],
+              year: "2023",
+            },
+          ].map((work) => {
+            const isHovered = hoveredWork === work.id;
+            return (
+              <div
+                key={work.id}
+                onMouseEnter={() => { setHoveredWork(work.id); setCursorHovered(true); }}
+                onMouseLeave={() => { setHoveredWork(null); setCursorHovered(false); }}
                 style={{
-                  width: "100%",
-                  background: isDark ? "#0c0a09" : "#fff",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "10px",
-                  color: colors.text,
-                  fontSize: "13px",
-                  padding: "10px 14px",
-                  outline: "none",
-                  transition: "border-color 0.2s"
+                  flexShrink: 0,
+                  width: "400px",
+                  height: "520px",
+                  borderRadius: "28px",
+                  scrollSnapAlign: "start",
+                  position: "relative",
+                  overflow: "hidden",
+                  background: work.gradient,
+                  border: isHovered
+                    ? `1px solid ${work.accent}55`
+                    : `1px solid ${colors.border}`,
+                  cursor: "pointer",
+                  transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.45s cubic-bezier(0.16,1,0.3,1), border-color 0.3s",
+                  transform: isHovered ? "translateY(-8px) scale(1.01)" : "none",
+                  boxShadow: isHovered
+                    ? `0 32px 80px ${work.accent}30, 0 0 0 1px ${work.accent}22`
+                    : "0 8px 32px rgba(0,0,0,0.2)",
                 }}
-                onFocus={e => e.target.style.borderColor = "#d4a574"}
-                onBlur={e => e.target.style.borderColor = colors.border}
-              />
-            </div>
-          </div>
+              >
+                {/* Background noise texture overlay */}
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
+                  opacity: 0.6, pointerEvents: "none",
+                }} />
+
+                {/* Glowing accent orb */}
+                <div style={{
+                  position: "absolute", width: "220px", height: "220px",
+                  borderRadius: "50%", filter: "blur(60px)",
+                  background: work.accent + "33",
+                  top: "-60px", right: "-60px",
+                  transition: "opacity 0.4s",
+                  opacity: isHovered ? 1 : 0.5,
+                }} />
+
+                {/* Top bar — category + year */}
+                <div style={{
+                  position: "absolute", top: "24px", left: "24px", right: "24px",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }}>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: "7px",
+                    background: work.accent + "22",
+                    border: `1px solid ${work.accent}44`,
+                    borderRadius: "40px", padding: "5px 12px",
+                    fontSize: "11px", color: work.accent, fontWeight: 600, letterSpacing: "0.04em",
+                  }}>
+                    <span>{work.icon}</span> {work.category}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", fontWeight: 400 }}>{work.year}</div>
+                </div>
+
+                {/* Center icon */}
+                <div style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  transform: `translate(-50%, -50%) scale(${isHovered ? 0.85 : 1})`,
+                  fontSize: "72px", lineHeight: 1,
+                  opacity: isHovered ? 0.08 : 0.15,
+                  transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)",
+                  pointerEvents: "none", userSelect: "none",
+                }}>{work.icon}</div>
+
+                {/* Bottom info panel */}
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, right: 0,
+                  padding: "28px 24px",
+                  background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 60%, transparent 100%)",
+                  transform: isHovered ? "translateY(0)" : "translateY(10px)",
+                  opacity: isHovered ? 1 : 0.92,
+                  transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)",
+                }}>
+                  {/* Tool badge */}
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: "6px",
+                    background: work.toolColor + "33",
+                    border: `1px solid ${work.toolColor}55`,
+                    borderRadius: "6px", padding: "3px 10px",
+                    fontSize: "10px", color: work.toolColor, fontWeight: 600,
+                    letterSpacing: "0.05em", textTransform: "uppercase",
+                    marginBottom: "10px",
+                  }}>
+                    {work.tool}
+                  </div>
+
+                  <div style={{ fontFamily: "Syne,sans-serif", fontSize: "20px", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: "8px" }}>
+                    {work.title}
+                  </div>
+
+                  <div style={{
+                    fontSize: "13px", color: "rgba(255,255,255,0.5)", lineHeight: 1.55, fontWeight: 300,
+                    marginBottom: "16px",
+                    maxHeight: isHovered ? "60px" : "0px",
+                    overflow: "hidden",
+                    transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)",
+                  }}>
+                    {work.desc}
+                  </div>
+
+                  {/* Metadata row */}
+                  <div style={{ display: "flex", gap: "16px", alignItems: "center", marginBottom: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
+                      <span style={{ color: work.accent, fontSize: "10px" }}>◆</span> {work.duration}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
+                      <span style={{ color: work.accent, fontSize: "10px" }}>◆</span> {work.resolution}
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {work.tags.map(tag => (
+                      <span key={tag} style={{
+                        fontSize: "10px", color: "rgba(255,255,255,0.4)",
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "4px", padding: "3px 8px", fontWeight: 500,
+                        letterSpacing: "0.04em",
+                      }}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Scroll progress indicator dots */}
+        <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "36px", padding: "0 48px" }}>
+          {[0,1,2,3,4,5].map(i => (
+            <div key={i} style={{
+              width: i === 0 ? "24px" : "6px",
+              height: "6px",
+              borderRadius: "4px",
+              background: i === 0 ? "#8b5a2b" : (isDark ? "rgba(212,165,116,0.2)" : "rgba(139,90,43,0.15)"),
+              transition: "all 0.3s",
+            }} />
+          ))}
         </div>
       </section>
 
@@ -1102,6 +1113,134 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
             </div>
             <div style={{ position:"absolute", width:"120px", height:"80px", top:"20px", left:"80px", borderRadius:"12px", background:"linear-gradient(135deg,rgba(212,165,116,0.3),rgba(196,154,108,0.2))", border:"1px solid rgba(212,165,116,0.3)", animation:"float1 4s ease-in-out infinite" }} />
             <div style={{ position:"absolute", width:"80px", height:"100px", top:"40px", right:"30px", borderRadius:"12px", background:"linear-gradient(135deg,rgba(139,90,43,0.3),rgba(245,200,66,0.2))", border:"1px solid rgba(139,90,43,0.3)", animation:"float2 5s ease-in-out infinite" }} />
+          </div>
+        </div>
+      </section>
+
+      {/* ── ABOUT SECTION ── */}
+      <section className="reveal" id="about-section" style={{
+        padding: "120px 48px",
+        background: isDark ? "#0a0807" : "#fff",
+        opacity: revealedSections.has("about-section") ? 1 : 0,
+        transform: revealedSections.has("about-section") ? "translateY(0)" : "translateY(40px)",
+        transition: "opacity 0.7s, transform 0.7s",
+        borderTop: `1px solid ${colors.border}`,
+        overflow: "hidden",
+        position: "relative",
+      }}>
+        {/* Background grid accent */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          backgroundImage: `linear-gradient(${
+            isDark ? "rgba(212,165,116,0.035)" : "rgba(139,90,43,0.04)"
+          } 1px, transparent 1px), linear-gradient(90deg, ${
+            isDark ? "rgba(212,165,116,0.035)" : "rgba(139,90,43,0.04)"
+          } 1px, transparent 1px)`,
+          backgroundSize: "80px 80px",
+          maskImage: "radial-gradient(ellipse 80% 80% at 80% 50%, black 0%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 80% 50%, black 0%, transparent 100%)",
+        }} />
+
+        <div style={{ maxWidth: "1400px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "center" }}>
+
+          {/* Left — Text content */}
+          <div>
+            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "20px", fontWeight: 500 }}>Our Story</div>
+            <h2 style={{
+              fontFamily: "Syne,sans-serif",
+              fontSize: "clamp(40px,5vw,64px)",
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              lineHeight: 0.95,
+              color: colors.text,
+              marginBottom: "32px",
+            }}>
+              Built for creators,<br/>
+              <em style={{ fontFamily: "Instrument Serif,serif", fontWeight: 400, color: "#8b5a2b", fontStyle: "italic" }}>by creators.</em>
+            </h2>
+            <p style={{ fontSize: "16px", color: colors.textMuted, lineHeight: 1.75, fontWeight: 300, maxWidth: "480px", marginBottom: "24px" }}>
+              Creatify started in 2021 with a single belief — that professional-grade design tools shouldn't live behind paywalls or require years of training. We built everything to run natively in the browser with zero friction.
+            </p>
+            <p style={{ fontSize: "16px", color: colors.textMuted, lineHeight: 1.75, fontWeight: 300, maxWidth: "480px", marginBottom: "48px" }}>
+              Today, over 3.8 million creators use Creatify to produce videos, brands, decks, and social content — all from a single tab.
+            </p>
+
+            {/* Values row */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {[
+                { label: "Browser-first",  desc: "Zero installs. Your work lives in the cloud, accessible anywhere.", icon: "🌐" },
+                { label: "Privacy by design", desc: "Your raw footage never touches our servers. Everything compiles locally.", icon: "🔒" },
+                { label: "Radical simplicity", desc: "Complex tools distilled into intuitive flows anyone can master in minutes.", icon: "✨" },
+              ].map(v => (
+                <div key={v.label} style={{
+                  display: "flex", gap: "16px", alignItems: "flex-start",
+                  padding: "18px 20px",
+                  background: isDark ? "rgba(212,165,116,0.04)" : "rgba(139,90,43,0.03)",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "14px",
+                  transition: "border-color 0.3s",
+                }}>
+                  <div style={{ fontSize: "20px", lineHeight: 1, marginTop: "2px", flexShrink: 0 }}>{v.icon}</div>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: colors.text, marginBottom: "4px" }}>{v.label}</div>
+                    <div style={{ fontSize: "13px", color: colors.textMuted, fontWeight: 300, lineHeight: 1.55 }}>{v.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — Visual card stack */}
+          <div style={{ position: "relative", height: "500px" }}>
+            {/* Decorative glow */}
+            <div style={{
+              position: "absolute", width: "300px", height: "300px",
+              borderRadius: "50%", filter: "blur(80px)",
+              background: "rgba(139,90,43,0.12)",
+              top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+              pointerEvents: "none",
+            }} />
+
+            {/* Card 1 — behind */}
+            <div style={{
+              position: "absolute", width: "300px", top: "30px", right: "0px",
+              background: isDark ? "#1a1411" : "#f7f2ec",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "20px", padding: "24px",
+              transform: "rotate(4deg)",
+              boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.4)" : "0 20px 60px rgba(139,90,43,0.1)",
+            }}>
+              <div style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>Founded</div>
+              <div style={{ fontFamily: "Syne,sans-serif", fontSize: "40px", fontWeight: 800, color: colors.text, letterSpacing: "-0.04em" }}>2021</div>
+              <div style={{ fontSize: "13px", color: colors.textMuted, marginTop: "6px" }}>San Francisco, CA</div>
+            </div>
+
+            {/* Card 2 — middle */}
+            <div style={{
+              position: "absolute", width: "320px", top: "120px", left: "0px",
+              background: isDark ? "#1e1612" : "#fff",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "20px", padding: "24px",
+              transform: "rotate(-2.5deg)",
+              boxShadow: isDark ? "0 24px 70px rgba(0,0,0,0.45)" : "0 24px 70px rgba(139,90,43,0.12)",
+            }}>
+              <div style={{ fontSize: "11px", color: "#8b5a2b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>Creators served</div>
+              <div style={{ fontFamily: "Syne,sans-serif", fontSize: "44px", fontWeight: 800, background: "linear-gradient(135deg,#8b5a2b,#d4a574)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", letterSpacing: "-0.04em" }}>3.8M+</div>
+              <div style={{ fontSize: "13px", color: colors.textMuted, marginTop: "6px" }}>Across 140 countries</div>
+            </div>
+
+            {/* Card 3 — front */}
+            <div style={{
+              position: "absolute", width: "280px", bottom: "20px", right: "20px",
+              background: "linear-gradient(135deg,#8b5a2b,#a0522d)",
+              borderRadius: "20px", padding: "24px",
+              transform: "rotate(1.5deg)",
+              boxShadow: "0 24px 70px rgba(139,90,43,0.35)",
+            }}>
+              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>Projects exported</div>
+              <div style={{ fontFamily: "Syne,sans-serif", fontSize: "40px", fontWeight: 800, color: "#fff", letterSpacing: "-0.04em" }}>120M</div>
+              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", marginTop: "6px" }}>Videos, logos, decks & more</div>
+            </div>
           </div>
         </div>
       </section>
