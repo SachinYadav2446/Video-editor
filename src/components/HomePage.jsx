@@ -14,8 +14,25 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   const [revealedSections, setRevealedSections] = useState(new Set());
   const [animatedStats, setAnimatedStats]     = useState(new Set());
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [activeNav, setActiveNav]             = useState("home");
+  const [navScrolled, setNavScrolled]         = useState(false);
   const canvasRef  = useRef(null);
   const profileDropdownRef = useRef(null);
+
+  // Track scroll position for nav shrink effect
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Smooth scroll helper
+  const scrollTo = (id, label) => {
+    setActiveNav(label);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const isDark = theme === "dark";
 
@@ -392,7 +409,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
       <div style={{ position:"fixed", width:cursorHovered?"60px":"40px", height:cursorHovered?"60px":"40px", border: isDark ? "1px solid rgba(212,165,116,0.5)" : "1px solid rgba(139,90,43,0.5)", borderRadius:"50%", pointerEvents:"none", zIndex:9998, transform:"translate(-50%,-50%)", transition:"width 0.3s,height 0.3s", left:mousePosition.x, top:mousePosition.y }} />
 
       {/* ── Premium Nav ── */}
-      <nav style={{ position:"fixed", top:0, left:0, right:0, width:"100%", zIndex:100, padding:"0 48px", height:"68px", display:"flex", alignItems:"center", backdropFilter:"blur(24px) saturate(180%)", background:colors.navBg, borderBottom:`1px solid ${colors.border}`, boxShadow: isDark ? "0 1px 32px rgba(0,0,0,0.2)" : "0 1px 32px rgba(139,90,43,0.05)", transition:"all 0.3s" }}>
+      <nav style={{ position:"fixed", top:0, left:0, right:0, width:"100%", zIndex:100, padding: navScrolled ? "0 40px" : "0 48px", height: navScrolled ? "58px" : "68px", display:"flex", alignItems:"center", backdropFilter:"blur(32px) saturate(200%)", background: navScrolled ? (isDark ? "rgba(12,10,9,0.97)" : "rgba(250,248,245,0.97)") : colors.navBg, borderBottom:`1px solid ${navScrolled ? colors.border : "transparent"}`, boxShadow: navScrolled ? (isDark ? "0 4px 40px rgba(0,0,0,0.35)" : "0 4px 40px rgba(139,90,43,0.08)") : "none", transition:"all 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
 
         {/* Logo mark + wordmark */}
         <div style={{ display:"flex", alignItems:"center", gap:"10px", cursor:"pointer", flexShrink:0 }} onClick={() => window.scrollTo({top:0,behavior:"smooth"})}>
@@ -409,24 +426,58 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
           </div>
         </div>
 
-        {/* Nav links with animated underline */}
-        <div style={{ display:"flex", marginLeft:"40px", flex:1, gap:"2px", alignItems:"center" }}>
-          <button onClick={() => onNavigate("editor")} style={{ background:"none", border:"none", color:colors.textMuted, fontSize:"13.5px", fontFamily:"'Poppins',sans-serif", fontWeight:400, padding:"6px 14px", borderRadius:"8px", cursor:"pointer", transition:"all 0.2s", outline:"none" }}
-            onMouseEnter={e => { e.currentTarget.style.color=colors.text; e.currentTarget.style.background= isDark ? "rgba(212, 165, 116, 0.12)" : "rgba(139,90,43,0.06)"; setCursorHovered(true); }}
-            onMouseLeave={e => { e.currentTarget.style.color=colors.textMuted; e.currentTarget.style.background="transparent"; setCursorHovered(false); }}
-          >Video Editor</button>
-          
-          <button onClick={() => onNavigate("presentation")} style={{ background:"none", border:"none", color:colors.textMuted, fontSize:"13.5px", fontFamily:"'Poppins',sans-serif", fontWeight:400, padding:"6px 14px", borderRadius:"8px", cursor:"pointer", transition:"all 0.2s", outline:"none" }}
-            onMouseEnter={e => { e.currentTarget.style.color=colors.text; e.currentTarget.style.background= isDark ? "rgba(212, 165, 116, 0.12)" : "rgba(139,90,43,0.06)"; setCursorHovered(true); }}
-            onMouseLeave={e => { e.currentTarget.style.color=colors.textMuted; e.currentTarget.style.background="transparent"; setCursorHovered(false); }}
-          >Presentation Maker</button>
-          
-          {["Templates","Pricing","Features","Enterprise"].map(item => (
-            <a key={item} href={`#${item.toLowerCase()}`} style={{ color:colors.textMuted, fontSize:"13.5px", fontWeight:400, textDecoration:"none", padding:"6px 14px", borderRadius:"8px", transition:"all 0.2s", position:"relative", letterSpacing:"-0.01em" }}
-              onMouseEnter={e => { e.currentTarget.style.color=colors.text; e.currentTarget.style.background= isDark ? "rgba(212, 165, 116, 0.12)" : "rgba(139,90,43,0.06)"; setCursorHovered(true); }}
-              onMouseLeave={e => { e.currentTarget.style.color=colors.textMuted; e.currentTarget.style.background="transparent"; setCursorHovered(false); }}
-            >{item}</a>
-          ))}
+        {/* Nav links – smooth scroll within homepage */}
+        <div style={{ display:"flex", marginLeft:"32px", flex:1, gap:"2px", alignItems:"center" }}>
+          {[
+            { label:"home",      id:null,                 text:"Home" },
+            { label:"tools",     id:"tools-section",      text:"Tools" },
+            { label:"templates", id:"templates-showcase",  text:"Templates" },
+            { label:"pipeline",  id:"pipeline-section",   text:"How it works" },
+            { label:"pricing",   id:"pricing-section",    text:"Pricing" },
+          ].map(({ label, id, text }) => {
+            const isActive = activeNav === label;
+            return (
+              <button
+                key={label}
+                onClick={() => scrollTo(id, label)}
+                style={{
+                  background: isActive
+                    ? (isDark ? "rgba(212,165,116,0.18)" : "rgba(139,90,43,0.1)")
+                    : "transparent",
+                  border: isActive
+                    ? (isDark ? "1px solid rgba(212,165,116,0.3)" : "1px solid rgba(139,90,43,0.2)")
+                    : "1px solid transparent",
+                  color: isActive ? (isDark ? "#d4a574" : "#8b5a2b") : colors.textMuted,
+                  fontSize:"13px",
+                  fontFamily:"'Poppins',sans-serif",
+                  fontWeight: isActive ? 500 : 400,
+                  padding:"6px 15px",
+                  borderRadius:"40px",
+                  cursor:"pointer",
+                  transition:"all 0.25s cubic-bezier(0.16,1,0.3,1)",
+                  outline:"none",
+                  letterSpacing:"-0.01em",
+                  whiteSpace:"nowrap",
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.color = colors.text;
+                    e.currentTarget.style.background = isDark ? "rgba(212,165,116,0.09)" : "rgba(139,90,43,0.05)";
+                  }
+                  setCursorHovered(true);
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.color = colors.textMuted;
+                    e.currentTarget.style.background = "transparent";
+                  }
+                  setCursorHovered(false);
+                }}
+              >
+                {text}
+              </button>
+            );
+          })}
         </div>
 
         {/* Right side CTAs */}
@@ -1258,41 +1309,8 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing-section" className="reveal" style={{ padding:"100px 48px", maxWidth:"1400px", margin:"0 auto", opacity: revealedSections.has("pricing-section") ? 1 : 0, transform: revealedSections.has("pricing-section") ? "translateY(0)" : "translateY(40px)", transition:"opacity 0.7s, transform 0.7s" }}>
-        <div style={{ textAlign:"center", marginBottom:"60px" }}>
-          <div style={{ fontSize:"11px", letterSpacing:"0.14em", color:"#8b5a2b", textTransform:"uppercase", marginBottom:"16px", fontWeight:500 }}>Simple pricing</div>
-          <h2 style={{ fontFamily:"Syne,sans-serif", fontSize:"clamp(36px,5vw,56px)", fontWeight:800, letterSpacing:"-0.04em", color:colors.text }}>Start free.<br/>Scale when ready.</h2>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"20px" }}>
-          {pricing.map((plan,i) => (
-            <div key={i} style={{ background: plan.popular ? "#8b5a2b" : (isDark ? "#171514" : "#fff"), border: plan.popular ? "none" : `1px solid ${colors.border}`, borderRadius:"24px", padding:"36px 32px", position:"relative", boxShadow: plan.popular ? "0 24px 60px rgba(139,90,43,0.3)" : colors.cardShadow, transition:"all 0.3s" }}>
-              {plan.popular && <div style={{ position:"absolute", top:"-12px", left:"50%", transform:"translateX(-50%)", background:"#f5c842", color:"#0c0a09", fontSize:"11px", fontWeight:700, padding:"4px 16px", borderRadius:"20px", letterSpacing:"0.04em" }}>MOST POPULAR</div>}
-              <div style={{ fontFamily:"Syne,sans-serif", fontSize:"20px", fontWeight:800, color: plan.popular ? "#fff" : colors.text, marginBottom:"8px" }}>{plan.name}</div>
-              <div style={{ display:"flex", alignItems:"baseline", gap:"4px", marginBottom:"6px" }}>
-                <span style={{ fontFamily:"Syne,sans-serif", fontSize:"44px", fontWeight:800, color: plan.popular ? "#fff" : colors.text }}>${plan.price}</span>
-                {plan.price > 0 && <span style={{ fontSize:"13px", color: plan.popular ? "rgba(255,255,255,0.7)" : colors.textMuted }}>/mo</span>}
-              </div>
-              <div style={{ fontSize:"12px", color: plan.popular ? "rgba(255,255,255,0.65)" : colors.textMuted, marginBottom:"28px" }}>{plan.period}</div>
-              <button style={{ width:"100%", padding:"13px", borderRadius:"12px", background: plan.popular ? "rgba(255,255,255,0.15)" : "#8b5a2b", color:"#fff", border: plan.popular ? "1px solid rgba(255,255,255,0.25)" : "none", fontSize:"14px", fontFamily:"'Poppins',sans-serif", fontWeight:400, cursor:"pointer", marginBottom:"28px", transition:"all 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.opacity="0.85"}
-                onMouseLeave={e => e.currentTarget.style.opacity="1"}
-                onClick={() => onNavigate("auth","signup")}
-              >Get started {plan.price === 0 ? "free" : "now"}</button>
-              <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-                {plan.features.map((f,j) => (
-                  <div key={j} style={{ display:"flex", alignItems:"center", gap:"10px", fontSize:"13px", color: plan.popular ? "rgba(255,255,255,0.85)" : colors.text }}>
-                    <span style={{ color: plan.popular ? "#22d3a8" : "#22d3a8", fontWeight:700, fontSize:"14px" }}>✓</span>{f}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Footer CTA */}
-      <section style={{ background:"linear-gradient(135deg,#1a0f0a,#2d1a0f)", padding:"100px 48px", textAlign:"center", width:"100%" }}>
+      <section style={{ background:"linear-gradient(135deg,#1a0f0a,#2d1a0f)", padding:"100px 48px", textAlign:"center", width:"100%", position:"relative", overflow:"hidden" }}>
         {/* Glowing orb background */}
         <div style={{ position:"absolute", width:"600px", height:"600px", borderRadius:"50%", filter:"blur(120px)", background:"rgba(139,90,43,0.15)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
         <div style={{ position:"relative", zIndex:1 }}>
@@ -1313,6 +1331,41 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
               onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.25)"; }}
               onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.12)"; }}
               onClick={() => onNavigate("auth","signin")}>Sign in instead</button>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing-section" className="reveal" style={{ padding:"100px 48px", background: isDark ? "#0e0c0b" : "#f7f4f0", width:"100%", opacity: revealedSections.has("pricing-section") ? 1 : 0, transform: revealedSections.has("pricing-section") ? "translateY(0)" : "translateY(40px)", transition:"opacity 0.7s, transform 0.7s" }}>
+        <div style={{ maxWidth:"1400px", margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:"60px" }}>
+            <div style={{ fontSize:"11px", letterSpacing:"0.14em", color:"#8b5a2b", textTransform:"uppercase", marginBottom:"16px", fontWeight:500 }}>Simple pricing</div>
+            <h2 style={{ fontFamily:"Syne,sans-serif", fontSize:"clamp(36px,5vw,56px)", fontWeight:800, letterSpacing:"-0.04em", color:colors.text }}>Start free.<br/>Scale when ready.</h2>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"20px" }}>
+            {pricing.map((plan,i) => (
+              <div key={i} style={{ background: plan.popular ? "#8b5a2b" : (isDark ? "#171514" : "#fff"), border: plan.popular ? "none" : `1px solid ${colors.border}`, borderRadius:"24px", padding:"36px 32px", position:"relative", boxShadow: plan.popular ? "0 24px 60px rgba(139,90,43,0.3)" : colors.cardShadow, transition:"all 0.3s" }}>
+                {plan.popular && <div style={{ position:"absolute", top:"-12px", left:"50%", transform:"translateX(-50%)", background:"#f5c842", color:"#0c0a09", fontSize:"11px", fontWeight:700, padding:"4px 16px", borderRadius:"20px", letterSpacing:"0.04em" }}>MOST POPULAR</div>}
+                <div style={{ fontFamily:"Syne,sans-serif", fontSize:"20px", fontWeight:800, color: plan.popular ? "#fff" : colors.text, marginBottom:"8px" }}>{plan.name}</div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:"4px", marginBottom:"6px" }}>
+                  <span style={{ fontFamily:"Syne,sans-serif", fontSize:"44px", fontWeight:800, color: plan.popular ? "#fff" : colors.text }}>${plan.price}</span>
+                  {plan.price > 0 && <span style={{ fontSize:"13px", color: plan.popular ? "rgba(255,255,255,0.7)" : colors.textMuted }}>/mo</span>}
+                </div>
+                <div style={{ fontSize:"12px", color: plan.popular ? "rgba(255,255,255,0.65)" : colors.textMuted, marginBottom:"28px" }}>{plan.period}</div>
+                <button style={{ width:"100%", padding:"13px", borderRadius:"12px", background: plan.popular ? "rgba(255,255,255,0.15)" : "#8b5a2b", color:"#fff", border: plan.popular ? "1px solid rgba(255,255,255,0.25)" : "none", fontSize:"14px", fontFamily:"'Poppins',sans-serif", fontWeight:400, cursor:"pointer", marginBottom:"28px", transition:"all 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.opacity="0.85"}
+                  onMouseLeave={e => e.currentTarget.style.opacity="1"}
+                  onClick={() => onNavigate("auth","signup")}
+                >Get started {plan.price === 0 ? "free" : "now"}</button>
+                <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+                  {plan.features.map((f,j) => (
+                    <div key={j} style={{ display:"flex", alignItems:"center", gap:"10px", fontSize:"13px", color: plan.popular ? "rgba(255,255,255,0.85)" : colors.text }}>
+                      <span style={{ color:"#22d3a8", fontWeight:700, fontSize:"14px" }}>✓</span>{f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
