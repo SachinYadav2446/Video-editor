@@ -634,8 +634,8 @@ export default function VideoEditor({ onBack, user }) {
         {/* Center Area - Preview and Timeline */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#0c0a09" }}>
           {/* Preview */}
-          <div style={{ flex: "0 0 auto", padding: "12px 20px", background: "#0c0a09", borderBottom: "1px solid rgba(139,90,43,0.15)" }}>
-            <div style={{ position: "relative", background: "#131110", aspectRatio: "16/9", width: "100%", maxWidth: "900px", margin: "0 auto", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(139,90,43,0.15)", boxShadow: "0 10px 40px rgba(0,0,0,0.4)" }}>
+          <div style={{ flex: "1 1 45%", maxHeight: "50%", minHeight: "220px", padding: "12px 20px", background: "#0c0a09", borderBottom: "1px solid rgba(139,90,43,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ position: "relative", background: "#131110", aspectRatio: "16/9", height: "100%", maxHeight: "100%", maxWidth: "100%", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(139,90,43,0.15)", boxShadow: "0 10px 40px rgba(0,0,0,0.4)" }}>
               {activeClip ? (
                 activeClip.videoEl ? (
                   <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "contain", filter: `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturation}%) hue-rotate(${state.hue}deg) opacity(${state.opacity}%)` }} playsInline />
@@ -681,41 +681,36 @@ export default function VideoEditor({ onBack, user }) {
               {/* Floating Vertical Transport Controls */}
               <div className="glass-panel" style={{
                 position: "absolute",
-                left: 12,
+                left: 8,
                 top: "50%",
                 transform: "translateY(-50%)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 5,
-                padding: "10px 5px",
-                borderRadius: "30px",
+                gap: 4,
+                padding: "8px 4px",
+                borderRadius: "24px",
                 zIndex: 50,
                 boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
                 border: "1px solid rgba(212,165,116,0.22)"
               }}>
-                <button className="tool-btn" style={{ padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "SET_PLAYHEAD", time: 0 })} title="Start"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-                <button className="tool-btn" style={{ padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "SET_PLAYHEAD", time: Math.max(0, state.playhead - 5) })} title="Back 5s"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg></button>
-                <button className="tool-btn" style={{ padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={onFrameBackward} title="Frame Back"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+                <button className="tool-btn" style={{ padding: "4px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "SET_PLAYHEAD", time: 0 })} title="Start"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                <button className="tool-btn" style={{ padding: "4px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "SET_PLAYHEAD", time: Math.max(0, state.playhead - 5) })} title="Back 5s"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg></button>
+                <button className="tool-btn" style={{ padding: "4px", border: "none", background: "none", color: "#8c8780" }} onClick={onFrameBackward} title="Frame Back"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
                 
-                <button className="tool-btn primary" style={{ width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} onClick={onTogglePlay}>
-                  {state.isPlaying ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: "2px" }}><path d="M8 5v14l11-7z"/></svg>}
+                <button className="tool-btn primary" style={{ width: "26px", height: "26px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} onClick={onTogglePlay}>
+                  {state.isPlaying ? <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> : <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: "1.5px" }}><path d="M8 5v14l11-7z"/></svg>}
                 </button>
                 
-                <button className="tool-btn" style={{ padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={onFrameForward} title="Frame Forward"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg></button>
-                <button className="tool-btn" style={{ padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "SET_PLAYHEAD", time: Math.min(state.duration, state.playhead + 5) })} title="Forward 5s"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6zm9-6l8.5 6V6z"/></svg></button>
-                <button className="tool-btn" style={{ padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={() => { dispatch({ type: "SET_PLAYING", value: false }); dispatch({ type: "SET_PLAYHEAD", time: state.duration }); }} title="End"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6zm9-12v12h2V6z"/></svg></button>
-                
-                <div style={{ height: 1, width: 14, background: "rgba(212,165,116,0.15)", margin: "4px 0" }} />
-                
-                <button className="tool-btn" style={{ opacity: state.history?.length === 0 ? 0.35 : 1, padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "UNDO" })} disabled={state.history?.length === 0} title="Undo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
-                <button className="tool-btn" style={{ opacity: state.future?.length === 0 ? 0.35 : 1, padding: "6px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "REDO" })} disabled={state.future?.length === 0} title="Redo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+                <button className="tool-btn" style={{ padding: "4px", border: "none", background: "none", color: "#8c8780" }} onClick={onFrameForward} title="Frame Forward"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg></button>
+                <button className="tool-btn" style={{ padding: "4px", border: "none", background: "none", color: "#8c8780" }} onClick={() => dispatch({ type: "SET_PLAYHEAD", time: Math.min(state.duration, state.playhead + 5) })} title="Forward 5s"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6zm9-6l8.5 6V6z"/></svg></button>
+                <button className="tool-btn" style={{ padding: "4px", border: "none", background: "none", color: "#8c8780" }} onClick={() => { dispatch({ type: "SET_PLAYING", value: false }); dispatch({ type: "SET_PLAYHEAD", time: state.duration }); }} title="End"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6zm9-12v12h2V6z"/></svg></button>
               </div>
             </div>
           </div>
 
           {/* Timeline */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: "200px" }}>
+          <div style={{ flex: "1 1 55%", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: "240px" }}>
             <Timeline state={state} dispatch={dispatch} timelineRef={timelineRef} onTimelineClick={handleTimelineClick} onClipMouseDown={handleClipMouseDown} onResizeMouseDown={handleResizeMouseDown} onAddTrack={onAddTrack} />
           </div>
         </div>
