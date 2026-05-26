@@ -21,6 +21,54 @@ export default function Timeline({ state, dispatch, timelineRef, onTimelineClick
 
         {/* Timeline controls: zoom & add track */}
         <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+          {/* Undo/Redo Controls */}
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <button className="tool-btn" 
+              style={{ 
+                opacity: state.history?.length === 0 ? 0.35 : 1, 
+                padding: "6px 10px", 
+                borderRadius: "6px",
+                background: "rgba(139,90,43,0.08)", 
+                border: "1px solid rgba(139,90,43,0.25)", 
+                color: "#d4a574", 
+                cursor: state.history?.length === 0 ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s" 
+              }} 
+              onMouseEnter={e => { if (state.history?.length > 0) e.currentTarget.style.background = "rgba(139,90,43,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(139,90,43,0.08)"; }}
+              onClick={() => dispatch({ type: "UNDO" })} 
+              disabled={state.history?.length === 0} 
+              title="Undo"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            </button>
+            <button className="tool-btn" 
+              style={{ 
+                opacity: state.future?.length === 0 ? 0.35 : 1, 
+                padding: "6px 10px", 
+                borderRadius: "6px",
+                background: "rgba(139,90,43,0.08)", 
+                border: "1px solid rgba(139,90,43,0.25)", 
+                color: "#d4a574", 
+                cursor: state.future?.length === 0 ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s" 
+              }} 
+              onMouseEnter={e => { if (state.future?.length > 0) e.currentTarget.style.background = "rgba(139,90,43,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(139,90,43,0.08)"; }}
+              onClick={() => dispatch({ type: "REDO" })} 
+              disabled={state.future?.length === 0} 
+              title="Redo"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+            </button>
+          </div>
+
           {/* Zoom Slider */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "11px", color: "#8c8780", fontWeight: 500, letterSpacing: "0.04em" }}>ZOOM</span>
