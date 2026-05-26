@@ -603,310 +603,189 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
         </div>
       </div>
 
-      {/* ── PAST WORK — Side-Scrollable Showcase ── */}
+      {/* ── PAST WORK — Horizontal Scrollable Showcase ── */}
       <section className="reveal" id="past-work-section" style={{
-        padding: "100px 0",
+        padding: "96px 0 80px",
         background: isDark ? "#0c0a09" : "#faf8f5",
         opacity: revealedSections.has("past-work-section") ? 1 : 0,
         transform: revealedSections.has("past-work-section") ? "translateY(0)" : "translateY(40px)",
         transition: "opacity 0.7s, transform 0.7s",
         overflow: "hidden",
       }}>
-        {/* Section header */}
-        <div style={{ padding: "0 48px", marginBottom: "48px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+
+        {/* Header */}
+        <div style={{ padding: "0 48px", marginBottom: "40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "20px" }}>
           <div>
-            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "14px", fontWeight: 500 }}>Made with Creatify</div>
-            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,60px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text, margin: 0 }}>
+            <div style={{ fontSize: "11px", letterSpacing: "0.16em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "12px", fontWeight: 600 }}>Made with Creatify</div>
+            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(32px,4vw,52px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text, margin: 0 }}>
               Past Work.
             </h2>
           </div>
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <p style={{ fontSize: "15px", color: colors.textMuted, maxWidth: "360px", lineHeight: 1.6, fontWeight: 300, margin: 0 }}>
-              Real projects crafted by creators using every tool in the suite.
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <p style={{ fontSize: "14px", color: colors.textMuted, maxWidth: "320px", lineHeight: 1.6, fontWeight: 300, margin: 0 }}>
+              Projects crafted across every tool in the suite.
             </p>
-            {/* Scroll arrows */}
             <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-              {[
-                { dir: -1, icon: "←" },
-                { dir:  1, icon: "→" },
-              ].map(({ dir, icon }) => (
-                <button
-                  key={dir}
-                  onClick={() => {
-                    if (pastWorkScrollRef.current) {
-                      pastWorkScrollRef.current.scrollBy({ left: dir * 440, behavior: "smooth" });
-                    }
-                  }}
+              {[{ dir: -1, icon: "←" }, { dir: 1, icon: "→" }].map(({ dir, icon }) => (
+                <button key={dir}
+                  onClick={() => pastWorkScrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" })}
                   style={{
-                    width: "44px", height: "44px", borderRadius: "50%",
-                    background: isDark ? "rgba(212,165,116,0.1)" : "rgba(139,90,43,0.08)",
+                    width: "38px", height: "38px", borderRadius: "50%",
+                    background: "transparent",
                     border: `1px solid ${colors.border}`,
-                    color: colors.text, fontSize: "18px", cursor: "pointer",
+                    color: colors.textMuted, fontSize: "16px", cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 0.2s", outline: "none", flexShrink: 0,
+                    transition: "all 0.2s", outline: "none",
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = "#8b5a2b"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "#8b5a2b"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = isDark ? "rgba(212,165,116,0.1)" : "rgba(139,90,43,0.08)"; e.currentTarget.style.color = colors.text; e.currentTarget.style.borderColor = colors.border; }}
-                >
-                  {icon}
-                </button>
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = colors.textMuted; e.currentTarget.style.borderColor = colors.border; }}
+                >{icon}</button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Horizontal scroll track */}
+        {/* Scroll rail */}
         <div
           ref={pastWorkScrollRef}
           style={{
             display: "flex",
-            gap: "20px",
+            gap: "16px",
             overflowX: "auto",
             scrollSnapType: "x mandatory",
-            scrollbarWidth: "none",   /* Firefox */
-            msOverflowStyle: "none", /* IE/Edge */
-            paddingLeft: "48px",
-            paddingRight: "48px",
-            paddingBottom: "8px",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            padding: "4px 48px 24px",
+            cursor: "grab",
           }}
+          onMouseDown={e => { e.currentTarget.dataset.down = "1"; e.currentTarget.dataset.startX = e.pageX; e.currentTarget.dataset.scrollLeft = e.currentTarget.scrollLeft; e.currentTarget.style.cursor = "grabbing"; }}
+          onMouseMove={e => { if (!e.currentTarget.dataset.down || e.currentTarget.dataset.down !== "1") return; e.currentTarget.scrollLeft = parseInt(e.currentTarget.dataset.scrollLeft) - (e.pageX - parseInt(e.currentTarget.dataset.startX)); }}
+          onMouseUp={e => { e.currentTarget.dataset.down = "0"; e.currentTarget.style.cursor = "grab"; }}
+          onMouseLeave={e => { e.currentTarget.dataset.down = "0"; e.currentTarget.style.cursor = "grab"; }}
         >
-          {[
+          {/* ──────────────────────────────────────────────────────────────────────
+            ADD YOUR WORK HERE.
+            Each item in this array becomes one card. Fill in:
+              title    — project name
+              category — short label shown top-left (e.g. "Video Edit")
+              tool     — which Creatify tool was used
+              year     — "2024"
+              accent   — hex colour for glow / badge
+              gradient — card background (CSS gradient string)
+              image    — optional image URL; if empty, icon is shown instead
+              icon     — emoji fallback when no image
+              tags     — array of short feature strings
+              desc     — one-sentence description (shown on hover)
+          ────────────────────────────────────────────────────────────────────── */}
+          {([
+            /* --- paste your entries below, format shown above --- */
+            /*
             {
-              id: "w1",
-              title: "Neon Nights — Brand Film",
-              category: "Video Edit",
-              tool: "Video Editor",
-              toolColor: "#8b5a2b",
-              duration: "2:34",
-              resolution: "4K",
-              desc: "A cinematic brand film for a streetwear label. Color graded with a custom teal-orange LUT, multi-track audio design.",
-              gradient: "linear-gradient(135deg, #0d0d18 0%, #1a0f2e 40%, #2d1f5e 100%)",
-              accent: "#7c5cbf",
-              icon: "🎬",
-              tags: ["Color Grade", "Audio Mix", "4K Export"],
+              title: "Project Name",
+              category: "Category",
+              tool: "Tool Used",
               year: "2024",
+              accent: "#d4a574",
+              gradient: "linear-gradient(135deg, #1a1207 0%, #2d2010 50%, #0c0a09 100%)",
+              image: "",
+              icon: "🎨",
+              tags: ["Tag 1", "Tag 2"],
+              desc: "Short description of what was made.",
             },
-            {
-              id: "w2",
-              title: "Solstice — Pitch Deck",
-              category: "Presentation",
-              tool: "Presentation Maker",
-              toolColor: "#a0522d",
-              duration: "24 slides",
-              resolution: "16:9",
-              desc: "Series A pitch deck for a climate-tech startup. Full motion transitions, embedded data charts, and investor-ready PDF export.",
-              gradient: "linear-gradient(135deg, #0a1a0f 0%, #0f2d1a 40%, #1a4d2e 100%)",
-              accent: "#22d3a8",
-              icon: "📊",
-              tags: ["Animation", "PDF Export", "Brand Kit"],
-              year: "2024",
-            },
-            {
-              id: "w3",
-              title: "Aurum — Visual Identity",
-              category: "Brand Design",
-              tool: "Logo Maker",
-              toolColor: "#c49a6c",
-              duration: "12 assets",
-              resolution: "SVG · PDF",
-              desc: "Full brand identity system for a luxury jewelry house. Logo, wordmark, icon variants, color palette, and usage guidelines.",
-              gradient: "linear-gradient(135deg, #1a1207 0%, #2d2010 40%, #4d3820 100%)",
-              accent: "#f5c842",
-              icon: "✨",
-              tags: ["SVG Export", "Brand Kit", "AI-Assisted"],
-              year: "2023",
-            },
-            {
-              id: "w4",
-              title: "Haze — Music Video Reel",
-              category: "Social Media",
-              tool: "Social Studio",
-              toolColor: "#d4a574",
-              duration: "0:58",
-              resolution: "9:16 · 4K",
-              desc: "Vertical short-form reel for an indie artist single. Beat-synced cuts, animated lyric overlays, published across TikTok and Reels.",
-              gradient: "linear-gradient(135deg, #1a0a0a 0%, #2d1010 40%, #4d1820 100%)",
-              accent: "#f87171",
-              icon: "🎵",
-              tags: ["Reels", "Beat Sync", "Auto-Publish"],
-              year: "2024",
-            },
-            {
-              id: "w5",
-              title: "Blueprint — App Launch Kit",
-              category: "Image Design",
-              tool: "Image Editor",
-              toolColor: "#6b8bbf",
-              duration: "32 assets",
-              resolution: "2x PNG · WEBP",
-              desc: "Complete app store launch kit — screenshots, feature graphics, social banners, and press kit assets for a SaaS product launch.",
-              gradient: "linear-gradient(135deg, #07101a 0%, #0f1e2d 40%, #1a3a52 100%)",
-              accent: "#60a5fa",
-              icon: "🖥️",
-              tags: ["Batch Export", "Layer Masks", "Smart Resize"],
-              year: "2025",
-            },
-            {
-              id: "w6",
-              title: "Flare — Event Poster Series",
-              category: "Print Design",
-              tool: "Print Design",
-              toolColor: "#8b5a2b",
-              duration: "6 posters",
-              resolution: "A1 · CMYK",
-              desc: "Six-piece poster series for an underground music festival. Print-ready CMYK with bleed lines, foil simulation, and spot-colour guide.",
-              gradient: "linear-gradient(135deg, #1a0d07 0%, #2d1a07 40%, #4d2e10 100%)",
-              accent: "#fb923c",
-              icon: "🎸",
-              tags: ["CMYK", "Bleed Lines", "Print-Ready"],
-              year: "2023",
-            },
-          ].map((work) => {
-            const isHovered = hoveredWork === work.id;
+            */
+          ]).map((work, i) => {
+            const isHov = hoveredWork === i;
             return (
-              <div
-                key={work.id}
-                onMouseEnter={() => { setHoveredWork(work.id); setCursorHovered(true); }}
-                onMouseLeave={() => { setHoveredWork(null); setCursorHovered(false); }}
+              <div key={i}
+                onMouseEnter={() => setHoveredWork(i)}
+                onMouseLeave={() => setHoveredWork(null)}
                 style={{
                   flexShrink: 0,
-                  width: "400px",
-                  height: "520px",
-                  borderRadius: "28px",
+                  width: "280px",
+                  height: "360px",
+                  borderRadius: "20px",
                   scrollSnapAlign: "start",
                   position: "relative",
                   overflow: "hidden",
-                  background: work.gradient,
-                  border: isHovered
-                    ? `1px solid ${work.accent}55`
-                    : `1px solid ${colors.border}`,
+                  background: work.gradient || "linear-gradient(135deg,#1a1207,#0c0a09)",
+                  border: isHov ? `1px solid ${work.accent || "#8b5a2b"}55` : `1px solid ${colors.border}`,
                   cursor: "pointer",
-                  transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.45s cubic-bezier(0.16,1,0.3,1), border-color 0.3s",
-                  transform: isHovered ? "translateY(-8px) scale(1.01)" : "none",
-                  boxShadow: isHovered
-                    ? `0 32px 80px ${work.accent}30, 0 0 0 1px ${work.accent}22`
-                    : "0 8px 32px rgba(0,0,0,0.2)",
+                  transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s",
+                  transform: isHov ? "translateY(-6px) scale(1.015)" : "none",
+                  boxShadow: isHov ? `0 24px 60px ${(work.accent||"#8b5a2b")}28` : "0 4px 20px rgba(0,0,0,0.18)",
+                  userSelect: "none",
                 }}
               >
-                {/* Background noise texture overlay */}
-                <div style={{
-                  position: "absolute", inset: 0,
-                  background: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
-                  opacity: 0.6, pointerEvents: "none",
-                }} />
+                {/* Accent orb */}
+                <div style={{ position:"absolute", width:"160px", height:"160px", borderRadius:"50%", filter:"blur(50px)", background:(work.accent||"#8b5a2b")+"2a", top:"-40px", right:"-40px", opacity: isHov ? 1 : 0.5, transition:"opacity 0.4s", pointerEvents:"none" }} />
 
-                {/* Glowing accent orb */}
-                <div style={{
-                  position: "absolute", width: "220px", height: "220px",
-                  borderRadius: "50%", filter: "blur(60px)",
-                  background: work.accent + "33",
-                  top: "-60px", right: "-60px",
-                  transition: "opacity 0.4s",
-                  opacity: isHovered ? 1 : 0.5,
-                }} />
+                {/* Image or icon */}
+                {work.image ? (
+                  <img src={work.image} alt={work.title} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity: isHov ? 0.55 : 0.35, transition:"opacity 0.4s" }} />
+                ) : (
+                  <div style={{ position:"absolute", top:"50%", left:"50%", transform:`translate(-50%,-50%) scale(${isHov?0.8:1})`, fontSize:"52px", opacity: isHov ? 0.07 : 0.13, transition:"all 0.4s", pointerEvents:"none", userSelect:"none" }}>{work.icon || "🎨"}</div>
+                )}
 
-                {/* Top bar — category + year */}
-                <div style={{
-                  position: "absolute", top: "24px", left: "24px", right: "24px",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}>
-                  <div style={{
-                    display: "inline-flex", alignItems: "center", gap: "7px",
-                    background: work.accent + "22",
-                    border: `1px solid ${work.accent}44`,
-                    borderRadius: "40px", padding: "5px 12px",
-                    fontSize: "11px", color: work.accent, fontWeight: 600, letterSpacing: "0.04em",
-                  }}>
-                    <span>{work.icon}</span> {work.category}
+                {/* Top bar */}
+                <div style={{ position:"absolute", top:"18px", left:"18px", right:"18px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ fontSize:"10px", color: work.accent||"#d4a574", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", background:(work.accent||"#8b5a2b")+"1a", border:`1px solid ${(work.accent||"#8b5a2b")}33`, borderRadius:"30px", padding:"3px 10px" }}>
+                    {work.category || "Project"}
                   </div>
-                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", fontWeight: 400 }}>{work.year}</div>
+                  <div style={{ fontSize:"10px", color:"rgba(255,255,255,0.3)", fontWeight:400 }}>{work.year || ""}</div>
                 </div>
 
-                {/* Center icon */}
-                <div style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: `translate(-50%, -50%) scale(${isHovered ? 0.85 : 1})`,
-                  fontSize: "72px", lineHeight: 1,
-                  opacity: isHovered ? 0.08 : 0.15,
-                  transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)",
-                  pointerEvents: "none", userSelect: "none",
-                }}>{work.icon}</div>
-
-                {/* Bottom info panel */}
-                <div style={{
-                  position: "absolute", bottom: 0, left: 0, right: 0,
-                  padding: "28px 24px",
-                  background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 60%, transparent 100%)",
-                  transform: isHovered ? "translateY(0)" : "translateY(10px)",
-                  opacity: isHovered ? 1 : 0.92,
-                  transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)",
-                }}>
-                  {/* Tool badge */}
-                  <div style={{
-                    display: "inline-flex", alignItems: "center", gap: "6px",
-                    background: work.toolColor + "33",
-                    border: `1px solid ${work.toolColor}55`,
-                    borderRadius: "6px", padding: "3px 10px",
-                    fontSize: "10px", color: work.toolColor, fontWeight: 600,
-                    letterSpacing: "0.05em", textTransform: "uppercase",
-                    marginBottom: "10px",
-                  }}>
-                    {work.tool}
+                {/* Bottom panel */}
+                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"20px 18px", background:"linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 65%, transparent 100%)", transform: isHov ? "none" : "translateY(4px)", opacity: isHov ? 1 : 0.9, transition:"all 0.4s" }}>
+                  {work.tool && (
+                    <div style={{ fontSize:"9px", fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase", color: work.accent||"#d4a574", marginBottom:"6px", opacity:0.85 }}>{work.tool}</div>
+                  )}
+                  <div style={{ fontFamily:"Syne,sans-serif", fontSize:"16px", fontWeight:800, color:"#fff", letterSpacing:"-0.02em", lineHeight:1.2, marginBottom: isHov && work.desc ? "8px" : 0 }}>
+                    {work.title || "Untitled Project"}
                   </div>
-
-                  <div style={{ fontFamily: "Syne,sans-serif", fontSize: "20px", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: "8px" }}>
-                    {work.title}
-                  </div>
-
-                  <div style={{
-                    fontSize: "13px", color: "rgba(255,255,255,0.5)", lineHeight: 1.55, fontWeight: 300,
-                    marginBottom: "16px",
-                    maxHeight: isHovered ? "60px" : "0px",
-                    overflow: "hidden",
-                    transition: "max-height 0.45s cubic-bezier(0.16,1,0.3,1)",
-                  }}>
-                    {work.desc}
-                  </div>
-
-                  {/* Metadata row */}
-                  <div style={{ display: "flex", gap: "16px", alignItems: "center", marginBottom: "14px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
-                      <span style={{ color: work.accent, fontSize: "10px" }}>◆</span> {work.duration}
+                  {work.desc && (
+                    <div style={{ fontSize:"12px", color:"rgba(255,255,255,0.48)", lineHeight:1.5, fontWeight:300, maxHeight: isHov ? "48px" : "0px", overflow:"hidden", transition:"max-height 0.4s" }}>
+                      {work.desc}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
-                      <span style={{ color: work.accent, fontSize: "10px" }}>◆</span> {work.resolution}
+                  )}
+                  {work.tags && work.tags.length > 0 && (
+                    <div style={{ display:"flex", gap:"5px", flexWrap:"wrap", marginTop: isHov ? "10px" : 0, maxHeight: isHov ? "40px" : 0, overflow:"hidden", transition:"max-height 0.4s" }}>
+                      {work.tags.map(t => (
+                        <span key={t} style={{ fontSize:"9px", color:"rgba(255,255,255,0.35)", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"3px", padding:"2px 7px", letterSpacing:"0.04em" }}>{t}</span>
+                      ))}
                     </div>
-                  </div>
-
-                  {/* Tags */}
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                    {work.tags.map(tag => (
-                      <span key={tag} style={{
-                        fontSize: "10px", color: "rgba(255,255,255,0.4)",
-                        background: "rgba(255,255,255,0.06)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "4px", padding: "3px 8px", fontWeight: 500,
-                        letterSpacing: "0.04em",
-                      }}>{tag}</span>
-                    ))}
-                  </div>
+                  )}
                 </div>
               </div>
             );
           })}
+
+          {/* Always-visible empty slot as a visual guide when no work added yet */}
+          {( [
+            "Your project here","Add a work","Coming soon","Add a work","Add a work","Add a work"
+          ] ).map((label, i) => (
+            <div key={`empty-${i}`} style={{
+              flexShrink: 0, width: "280px", height: "360px", borderRadius: "20px",
+              scrollSnapAlign: "start",
+              background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.025)",
+              border: `1.5px dashed ${colors.border}`,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: "12px",
+            }}>
+              <div style={{ width:"36px", height:"36px", borderRadius:"50%", border:`1.5px dashed ${colors.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 1v12M1 7h12" stroke={isDark?"rgba(212,165,116,0.25)":"rgba(139,90,43,0.2)"} strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ fontSize:"12px", color: isDark ? "rgba(212,165,116,0.2)" : "rgba(139,90,43,0.2)", fontWeight:400, letterSpacing:"0.04em" }}>{label}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Scroll progress indicator dots */}
-        <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "36px", padding: "0 48px" }}>
-          {[0,1,2,3,4,5].map(i => (
-            <div key={i} style={{
-              width: i === 0 ? "24px" : "6px",
-              height: "6px",
-              borderRadius: "4px",
-              background: i === 0 ? "#8b5a2b" : (isDark ? "rgba(212,165,116,0.2)" : "rgba(139,90,43,0.15)"),
-              transition: "all 0.3s",
-            }} />
-          ))}
+        {/* Scroll indicator line */}
+        <div style={{ padding:"0 48px", marginTop:"8px" }}>
+          <div style={{ height:"1px", background: isDark ? "rgba(212,165,116,0.08)" : "rgba(139,90,43,0.07)", borderRadius:"1px", position:"relative" }}>
+            <div style={{ position:"absolute", left:0, top:0, height:"100%", width:"18%", background: "linear-gradient(90deg,#8b5a2b,#d4a574)", borderRadius:"1px" }} />
+          </div>
         </div>
       </section>
 
@@ -1119,131 +998,137 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
 
       {/* ── ABOUT SECTION ── */}
       <section className="reveal" id="about-section" style={{
-        padding: "120px 48px",
-        background: isDark ? "#0a0807" : "#fff",
         opacity: revealedSections.has("about-section") ? 1 : 0,
         transform: revealedSections.has("about-section") ? "translateY(0)" : "translateY(40px)",
-        transition: "opacity 0.7s, transform 0.7s",
-        borderTop: `1px solid ${colors.border}`,
-        overflow: "hidden",
+        transition: "opacity 0.8s, transform 0.8s",
         position: "relative",
+        overflow: "hidden",
       }}>
-        {/* Background grid accent */}
+
+        {/* Top rule */}
+        <div style={{ height:"1px", background: `linear-gradient(90deg, transparent, ${colors.border}, transparent)` }} />
+
+        {/* ─ Top editorial band: full-width dark */}
         <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          backgroundImage: `linear-gradient(${
-            isDark ? "rgba(212,165,116,0.035)" : "rgba(139,90,43,0.04)"
-          } 1px, transparent 1px), linear-gradient(90deg, ${
-            isDark ? "rgba(212,165,116,0.035)" : "rgba(139,90,43,0.04)"
-          } 1px, transparent 1px)`,
-          backgroundSize: "80px 80px",
-          maskImage: "radial-gradient(ellipse 80% 80% at 80% 50%, black 0%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 80% 50%, black 0%, transparent 100%)",
-        }} />
+          background: isDark ? "#080604" : "#0c0a09",
+          padding: "80px 48px",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Subtle grid */}
+          <div style={{
+            position:"absolute", inset:0, pointerEvents:"none",
+            backgroundImage: `linear-gradient(rgba(212,165,116,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(212,165,116,0.04) 1px, transparent 1px)`,
+            backgroundSize: "64px 64px",
+          }} />
+          {/* Glow */}
+          <div style={{ position:"absolute", width:"500px", height:"500px", borderRadius:"50%", filter:"blur(120px)", background:"rgba(139,90,43,0.1)", top:"-100px", right:"-100px", pointerEvents:"none" }} />
 
-        <div style={{ maxWidth: "1400px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "center" }}>
+          <div style={{ maxWidth:"1400px", margin:"0 auto", position:"relative" }}>
+            {/* Eyebrow */}
+            <div style={{ fontSize:"11px", letterSpacing:"0.18em", color:"#8b5a2b", textTransform:"uppercase", fontWeight:600, marginBottom:"32px", display:"flex", alignItems:"center", gap:"12px" }}>
+              <div style={{ width:"24px", height:"1px", background:"#8b5a2b" }} /> Our Story
+            </div>
 
-          {/* Left — Text content */}
-          <div>
-            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "20px", fontWeight: 500 }}>Our Story</div>
-            <h2 style={{
-              fontFamily: "Syne,sans-serif",
-              fontSize: "clamp(40px,5vw,64px)",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              lineHeight: 0.95,
-              color: colors.text,
-              marginBottom: "32px",
+            {/* Pull quote */}
+            <div style={{ maxWidth:"900px" }}>
+              <h2 style={{
+                fontFamily: "Syne,sans-serif",
+                fontSize: "clamp(36px,5.5vw,72px)",
+                fontWeight: 800,
+                letterSpacing: "-0.04em",
+                lineHeight: 1,
+                color: "#f5f0e8",
+                margin: 0,
+              }}>
+                Built for creators,<br/>
+                <em style={{ fontFamily:"Instrument Serif,serif", fontWeight:400, color:"#d4a574", fontStyle:"italic" }}>by creators.</em>
+              </h2>
+              <p style={{ fontSize:"17px", color:"rgba(255,255,255,0.38)", lineHeight:1.7, fontWeight:300, maxWidth:"620px", marginTop:"28px" }}>
+                Creatify was born from a simple frustration — professional design tools demanded years of training and steep subscriptions. We built an entirely browser-native suite so anyone can create at a professional level, instantly.
+              </p>
+            </div>
+
+            {/* Stat strip */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4,1fr)",
+              gap: "0",
+              marginTop: "64px",
+              borderTop: "1px solid rgba(255,255,255,0.07)",
+              borderLeft: "1px solid rgba(255,255,255,0.07)",
             }}>
-              Built for creators,<br/>
-              <em style={{ fontFamily: "Instrument Serif,serif", fontWeight: 400, color: "#8b5a2b", fontStyle: "italic" }}>by creators.</em>
-            </h2>
-            <p style={{ fontSize: "16px", color: colors.textMuted, lineHeight: 1.75, fontWeight: 300, maxWidth: "480px", marginBottom: "24px" }}>
-              Creatify started in 2021 with a single belief — that professional-grade design tools shouldn't live behind paywalls or require years of training. We built everything to run natively in the browser with zero friction.
-            </p>
-            <p style={{ fontSize: "16px", color: colors.textMuted, lineHeight: 1.75, fontWeight: 300, maxWidth: "480px", marginBottom: "48px" }}>
-              Today, over 3.8 million creators use Creatify to produce videos, brands, decks, and social content — all from a single tab.
-            </p>
-
-            {/* Values row */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {[
-                { label: "Browser-first",  desc: "Zero installs. Your work lives in the cloud, accessible anywhere.", icon: "🌐" },
-                { label: "Privacy by design", desc: "Your raw footage never touches our servers. Everything compiles locally.", icon: "🔒" },
-                { label: "Radical simplicity", desc: "Complex tools distilled into intuitive flows anyone can master in minutes.", icon: "✨" },
-              ].map(v => (
-                <div key={v.label} style={{
-                  display: "flex", gap: "16px", alignItems: "flex-start",
-                  padding: "18px 20px",
-                  background: isDark ? "rgba(212,165,116,0.04)" : "rgba(139,90,43,0.03)",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "14px",
-                  transition: "border-color 0.3s",
+                { value:"2021", label:"Founded" },
+                { value:"3.8M+", label:"Creators worldwide" },
+                { value:"120M+", label:"Projects exported" },
+                { value:"140", label:"Countries reached" },
+              ].map((s, i) => (
+                <div key={i} style={{
+                  padding: "32px 28px",
+                  borderRight: "1px solid rgba(255,255,255,0.07)",
+                  borderBottom: "1px solid rgba(255,255,255,0.07)",
                 }}>
-                  <div style={{ fontSize: "20px", lineHeight: 1, marginTop: "2px", flexShrink: 0 }}>{v.icon}</div>
-                  <div>
-                    <div style={{ fontSize: "14px", fontWeight: 600, color: colors.text, marginBottom: "4px" }}>{v.label}</div>
-                    <div style={{ fontSize: "13px", color: colors.textMuted, fontWeight: 300, lineHeight: 1.55 }}>{v.desc}</div>
-                  </div>
+                  <div style={{ fontFamily:"Syne,sans-serif", fontSize:"clamp(28px,3.5vw,44px)", fontWeight:800, letterSpacing:"-0.04em", background:"linear-gradient(135deg,#f5f0e8,#d4a574)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text", lineHeight:1, marginBottom:"8px" }}>{s.value}</div>
+                  <div style={{ fontSize:"12px", color:"rgba(255,255,255,0.3)", letterSpacing:"0.04em", fontWeight:400 }}>{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Right — Visual card stack */}
-          <div style={{ position: "relative", height: "500px" }}>
-            {/* Decorative glow */}
-            <div style={{
-              position: "absolute", width: "300px", height: "300px",
-              borderRadius: "50%", filter: "blur(80px)",
-              background: "rgba(139,90,43,0.12)",
-              top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-              pointerEvents: "none",
-            }} />
+        {/* ─ Bottom split: mission + principles */}
+        <div style={{
+          background: isDark ? "#0a0807" : "#fff",
+          padding: "80px 48px",
+          borderTop: `1px solid ${colors.border}`,
+        }}>
+          <div style={{ maxWidth:"1400px", margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"80px", alignItems:"start" }}>
 
-            {/* Card 1 — behind */}
-            <div style={{
-              position: "absolute", width: "300px", top: "30px", right: "0px",
-              background: isDark ? "#1a1411" : "#f7f2ec",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "20px", padding: "24px",
-              transform: "rotate(4deg)",
-              boxShadow: isDark ? "0 20px 60px rgba(0,0,0,0.4)" : "0 20px 60px rgba(139,90,43,0.1)",
-            }}>
-              <div style={{ fontSize: "11px", color: colors.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>Founded</div>
-              <div style={{ fontFamily: "Syne,sans-serif", fontSize: "40px", fontWeight: 800, color: colors.text, letterSpacing: "-0.04em" }}>2021</div>
-              <div style={{ fontSize: "13px", color: colors.textMuted, marginTop: "6px" }}>San Francisco, CA</div>
+            {/* Left — Mission statement */}
+            <div>
+              <div style={{ fontSize:"11px", letterSpacing:"0.16em", color:"#8b5a2b", textTransform:"uppercase", fontWeight:600, marginBottom:"20px", display:"flex", alignItems:"center", gap:"10px" }}>
+                <div style={{ width:"20px", height:"1px", background:"#8b5a2b" }} /> Mission
+              </div>
+              <p style={{ fontSize:"18px", color:colors.text, lineHeight:1.75, fontWeight:300, margin:0, letterSpacing:"-0.01em" }}>
+                We believe creativity is a human right, not a premium feature. Every tool in Creatify is designed to collapse the distance between an idea and a finished, professional piece of work.
+              </p>
+              <div style={{ marginTop:"36px", paddingTop:"36px", borderTop:`1px solid ${colors.border}` }}>
+                <p style={{ fontSize:"14px", color:colors.textMuted, lineHeight:1.7, fontWeight:300, margin:0 }}>
+                  From a first-time freelancer to a studio of fifty — Creatify scales with you. Everything runs in your browser. Nothing ever leaves your machine without your say.
+                </p>
+              </div>
             </div>
 
-            {/* Card 2 — middle */}
-            <div style={{
-              position: "absolute", width: "320px", top: "120px", left: "0px",
-              background: isDark ? "#1e1612" : "#fff",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "20px", padding: "24px",
-              transform: "rotate(-2.5deg)",
-              boxShadow: isDark ? "0 24px 70px rgba(0,0,0,0.45)" : "0 24px 70px rgba(139,90,43,0.12)",
-            }}>
-              <div style={{ fontSize: "11px", color: "#8b5a2b", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>Creators served</div>
-              <div style={{ fontFamily: "Syne,sans-serif", fontSize: "44px", fontWeight: 800, background: "linear-gradient(135deg,#8b5a2b,#d4a574)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", letterSpacing: "-0.04em" }}>3.8M+</div>
-              <div style={{ fontSize: "13px", color: colors.textMuted, marginTop: "6px" }}>Across 140 countries</div>
-            </div>
-
-            {/* Card 3 — front */}
-            <div style={{
-              position: "absolute", width: "280px", bottom: "20px", right: "20px",
-              background: "linear-gradient(135deg,#8b5a2b,#a0522d)",
-              borderRadius: "20px", padding: "24px",
-              transform: "rotate(1.5deg)",
-              boxShadow: "0 24px 70px rgba(139,90,43,0.35)",
-            }}>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>Projects exported</div>
-              <div style={{ fontFamily: "Syne,sans-serif", fontSize: "40px", fontWeight: 800, color: "#fff", letterSpacing: "-0.04em" }}>120M</div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", marginTop: "6px" }}>Videos, logos, decks & more</div>
+            {/* Right — Principles (clean list, no emoji boxes) */}
+            <div>
+              <div style={{ fontSize:"11px", letterSpacing:"0.16em", color:"#8b5a2b", textTransform:"uppercase", fontWeight:600, marginBottom:"20px", display:"flex", alignItems:"center", gap:"10px" }}>
+                <div style={{ width:"20px", height:"1px", background:"#8b5a2b" }} /> Principles
+              </div>
+              <div style={{ display:"flex", flexDirection:"column" }}>
+                {[
+                  { num:"01", title:"Browser-native",     body:"Zero downloads. Zero plugins. Your work is always a tab away, on any machine." },
+                  { num:"02", title:"Privacy by default",  body:"Raw footage never touches our servers. Rendering happens locally, always." },
+                  { num:"03", title:"Radical simplicity",  body:"Professional power, stripped of unnecessary complexity. Opinionated and fast." },
+                ].map((p, i, arr) => (
+                  <div key={p.num} style={{
+                    display:"grid", gridTemplateColumns:"48px 1fr", gap:"16px", alignItems:"start",
+                    padding:"24px 0",
+                    borderBottom: i < arr.length-1 ? `1px solid ${colors.border}` : "none",
+                  }}>
+                    <div style={{ fontFamily:"Syne,sans-serif", fontSize:"11px", fontWeight:700, color: isDark ? "rgba(212,165,116,0.3)" : "rgba(139,90,43,0.3)", letterSpacing:"0.06em", paddingTop:"3px" }}>{p.num}</div>
+                    <div>
+                      <div style={{ fontSize:"15px", fontWeight:600, color:colors.text, marginBottom:"6px", letterSpacing:"-0.01em" }}>{p.title}</div>
+                      <div style={{ fontSize:"13px", color:colors.textMuted, lineHeight:1.6, fontWeight:300 }}>{p.body}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
+
 
       {/* ── HIGH-FIDELITY PRODUCTION PIPELINE ── */}
       <section className="reveal" id="pipeline-section" style={{
