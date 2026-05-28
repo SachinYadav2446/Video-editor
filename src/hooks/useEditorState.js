@@ -3,6 +3,15 @@ import { INITIAL_STATE, uid } from "../constants";
 
 function editorReducer(state, action) {
   switch (action.type) {
+    case "LOAD_PROJECT":
+      return {
+        ...INITIAL_STATE,
+        ...action.projectState,
+        history: [],
+        future: [],
+        isPlaying: false,
+        playhead: 0,
+      };
     case "UNDO":
       if (state.history.length === 0) return state;
       const previousState = state.history[state.history.length - 1];

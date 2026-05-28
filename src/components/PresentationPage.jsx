@@ -112,11 +112,16 @@ function getThemeBodyFont(archetype) {
 }
 
 export default function PresentationPage({ onBack, user, initialPresentation }) {
-  const [presentationId] = useState(() => initialPresentation?.id || `ppt_${Date.now()}`);
+  const [presentationId] = useState(() => initialPresentation?.id || initialPresentation?.data?.id || `ppt_${Date.now()}`);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [projectTitle, setProjectTitle] = useState(() => {
+    return initialPresentation?.title || initialPresentation?.name || initialPresentation?.data?.name || "Untitled Presentation";
+  });
   
   const [slides, setSlides] = useState(() => {
-    if (initialPresentation && initialPresentation.slides) {
-      return initialPresentation.slides;
+    if (initialPresentation) {
+      if (initialPresentation.slides) return initialPresentation.slides;
+      if (initialPresentation.data && initialPresentation.data.slides) return initialPresentation.data.slides;
     }
     return [
       {
@@ -161,38 +166,105 @@ export default function PresentationPage({ onBack, user, initialPresentation }) 
   });
 
   const [activeSlideId, setActiveSlideId] = useState(() => {
-    if (initialPresentation && initialPresentation.slides && initialPresentation.slides.length > 0) {
-      return initialPresentation.slides[0].id;
+    const s = initialPresentation?.slides || initialPresentation?.data?.slides;
+    if (s && s.length > 0) {
+      return s[0].id;
     }
     return "slide_1";
   });
   const [themeIdx, setThemeIdx] = useState(() => {
-    if (initialPresentation && typeof initialPresentation.themeIdx === "number") {
-      return initialPresentation.themeIdx;
+    if (initialPresentation) {
+      if (typeof initialPresentation.themeIdx === "number") return initialPresentation.themeIdx;
+      if (initialPresentation.data && typeof initialPresentation.data.themeIdx === "number") {
+        return initialPresentation.data.themeIdx;
+      }
     }
     return 0;
   });
 
-  // Auto-save presentations to localStorage
-  useEffect(() => {
-    if (user && user.email) {
-      try {
-        const key = `creatify_presentations_${user.email}`;
-        const ppts = JSON.parse(localStorage.getItem(key) || "[]");
-        const filtered = ppts.filter(p => p.id !== presentationId);
-        filtered.unshift({
-          id: presentationId,
-          name: slides[0]?.title || "Untitled Presentation",
-          updatedAt: new Date().toISOString(),
-          slides: slides,
-          themeIdx: themeIdx
-        });
-        localStorage.setItem(key, JSON.stringify(filtered));
-      } catch (err) {
-        console.error("Failed to auto-save presentation:", err);
-      }
+  // Leave handlers
+  const handleBackClick = () => {
+    // Sync active slide title to projectTitle state
+    if (slides[0]?.title) {
+      setProjectTitle(slides[0].title);
     }
-  }, [slides, themeIdx, user, presentationId]);
+    setShowLeaveModal(true);
+  };
+
+  const handleSaveAndExit = () => {
+    const savedWorks = JSON.parse(localStorage.getItem("creatify_past_works") || "[]");
+    const projectId = initialPresentation?.id || initialPresentation?.data?.id || presentationId;
+    const existingIdx = savedWorks.findIndex(w => w.id === projectId);
+
+    const projectData = {
+      id: projectId,
+      title: projectTitle.trim() || slides[0]?.title || "Untitled Presentation",
+      category: "Presentation",
+      tool: "Slide Studio",
+      year: new Date().getFullYear().toString(),
+      accent: "#a0522d",
+      gradient: "linear-gradient(135deg, #111827 0%, #1f2937 50%, #030712 100%)",
+      image: initialPresentation?.image || initialPresentation?.data?.image || "", 
+      tags: [`${slides.length} Slides`, "Vector", "Pitch"],
+      desc: `Modern slide deck presentation with ${slides.length} slides.`,
+      data: {
+        id: projectId,
+        name: projectTitle.trim() || slides[0]?.title || "Untitled Presentation",
+        slides: slides,
+        themeIdx: themeIdx
+      }
+    };
+
+    if (existingIdx > -1) {
+      savedWorks[existingIdx] = projectData;
+    } else {
+      savedWorks.unshift(projectData);
+    }
+    localStorage.setItem("creatify_past_works", JSON.stringify(savedWorks));
+
+    if (user && user.email) {
+      const key = `creatify_presentations_${user.email}`;
+      const ppts = JSON.parse(localStorage.getItem(key) || "[]");
+      const filtered = ppts.filter(p => p.id !== projectId);
+      filtered.unshift({
+        id: projectId,
+        name: projectTitle.trim() || slides[0]?.title || "Untitled Presentation",
+        updatedAt: new Date().toISOString(),
+        slides: slides,
+        themeIdx: themeIdx
+      });
+      localStorage.setItem(key, JSON.stringify(filtered));
+    }
+
+    const token = localStorage.getItem("creatify_token");
+    if (token) {
+      fetch("http://localhost:3001/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(projectData)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Server rejected save");
+        console.log("Saved presentation project to DB successfully");
+      })
+      .catch(err => {
+        console.error("DB save error:", err.message);
+      })
+      .finally(() => {
+        onBack();
+      });
+    } else {
+      onBack();
+    }
+  };
+
+  const handleDiscardAndExit = () => {
+    onBack();
+  };
+
   const [presentMode, setPresentMode] = useState(false);
   const [exportProgress, setExportProgress] = useState(null);
   const [showAddLayoutMenu, setShowAddLayoutMenu] = useState(false);
@@ -737,7 +809,7 @@ export default function PresentationSlide() {
       <div className="sidebar-panel" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", borderBottom: "1px solid rgba(212,165,116,0.12)", flexShrink: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {/* Back button */}
-          <button onClick={onBack} className="tool-btn" style={{ padding: "6px 14px", fontSize: "12px", gap: "6px" }} title="Back to Home">
+          <button onClick={handleBackClick} className="tool-btn" style={{ padding: "6px 14px", fontSize: "12px", gap: "6px" }} title="Back to Home">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M5 12l7 7M5 12l7-7"/></svg>
             Back
           </button>
@@ -745,7 +817,7 @@ export default function PresentationSlide() {
           <div style={{ width: "1px", height: "20px", background: "rgba(212,165,116,0.15)" }} />
 
           {/* Logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={onBack}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={handleBackClick}>
             <div style={{ width: "24px", height: "24px", borderRadius: "6px", background: "linear-gradient(135deg,#8b5a2b,#d4a574)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8 L8 2 L13 8 L8 14 Z" fill="white" opacity="0.9"/><circle cx="8" cy="8" r="2" fill="white"/></svg>
             </div>
@@ -1963,6 +2035,45 @@ export default function PresentationSlide() {
                 {copiedCode ? "✓ Copied Code!" : "Copy Code"}
               </button>
               <button className="tool-btn" onClick={() => setShowCodeModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100001 }}>
+          <div className="glass-panel" style={{ width: "420px", padding: "30px", borderRadius: "24px", textAlign: "center", border: "1px solid rgba(212,165,116,0.25)", background: "#131110" }}>
+            <div style={{ fontSize: "40px", marginBottom: "16px" }}>💾</div>
+            <h3 style={{ fontFamily: "Syne,sans-serif", fontSize: "22px", fontWeight: 800, color: "#fff", marginBottom: "10px", letterSpacing: "-0.03em" }}>Save presentation?</h3>
+            <p style={{ fontSize: "13.5px", color: "#8c8780", lineHeight: 1.6, marginBottom: "24px", fontWeight: 300 }}>
+              Would you like to save this presentation draft to your past works, or discard your current edits?
+            </p>
+            
+            {/* Input field for project title */}
+            <div style={{ marginBottom: "24px", textAlign: "left" }}>
+              <label style={{ fontSize: "11px", color: "#d4a574", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", display: "block", marginBottom: "8px" }}>Presentation Title</label>
+              <input 
+                type="text" 
+                value={projectTitle} 
+                onChange={e => setProjectTitle(e.target.value)} 
+                style={{ width: "100%", background: "#0c0a09", border: "1px solid rgba(212,165,116,0.18)", borderRadius: "8px", color: "#fff", padding: "10px 14px", fontSize: "13px", outline: "none", transition: "border-color 0.2s" }}
+                placeholder="My Awesome Presentation"
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button className="tool-btn primary" onClick={handleSaveAndExit} style={{ justifyContent: "center", padding: "12px", fontSize: "13px", fontWeight: 500 }}>
+                Save & Exit to Dashboard
+              </button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button className="tool-btn danger" onClick={handleDiscardAndExit} style={{ flex: 1, justifyContent: "center", padding: "10px", fontSize: "12.5px" }}>
+                  Discard Edits
+                </button>
+                <button className="tool-btn" onClick={() => setShowLeaveModal(false)} style={{ flex: 1, justifyContent: "center", padding: "10px", fontSize: "12.5px" }}>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
