@@ -7,6 +7,7 @@ const dbFilePath = path.join(__dirname, 'users.json');
 // In-memory store as fallback when no PostgreSQL is configured
 const memoryStore = {
   users: [],
+  projects: [],
   nextId: 1
 };
 
@@ -16,8 +17,9 @@ function loadUsersFromFile() {
       const data = fs.readFileSync(dbFilePath, 'utf8');
       const parsed = JSON.parse(data);
       memoryStore.users = parsed.users || [];
+      memoryStore.projects = parsed.projects || [];
       memoryStore.nextId = parsed.nextId || 1;
-      console.log(`💾 Loaded ${memoryStore.users.length} users from JSON file DB: ${dbFilePath}`);
+      console.log(`💾 Loaded ${memoryStore.users.length} users and ${memoryStore.projects.length} projects from JSON file DB: ${dbFilePath}`);
     } else {
       saveUsersToFile();
     }
@@ -72,6 +74,24 @@ const initSQL = `
     name       VARCHAR(255) NOT NULL DEFAULT 'My Workspace',
     plan       VARCHAR(50)  DEFAULT 'free',
     created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS projects (
+    id           VARCHAR(255) PRIMARY KEY,
+    user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title        VARCHAR(255) NOT NULL,
+    category     VARCHAR(100) NOT NULL,
+    tool         VARCHAR(100) NOT NULL,
+    year         VARCHAR(10) NOT NULL,
+    accent       VARCHAR(10) NOT NULL,
+    gradient     VARCHAR(255) NOT NULL,
+    image        TEXT,
+    icon         VARCHAR(50),
+    tags         JSONB,
+    description  TEXT,
+    project_data JSONB NOT NULL,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ DEFAULT NOW()
   );
 `;
 
@@ -208,6 +228,65 @@ const db = {
     }
     const res = await pool.query('SELECT id, name, email, provider, avatar, created_at FROM users ORDER BY created_at DESC');
     return res.rows;
+  },
+
+  // ─── Project Operations ──────────────────────────────────────────────────
+  async findProjectsByUser(userId) {
+    if (useMemory) {
+      return memoryStore.projects.filter(p => p.user_id === userId);
+    }
+    const res = await pool.query('SELECT * FROM projects WHERE user_id = $1 ORDER BY updated_at DESC', [userId]);
+    return res.rows;
+  },
+
+  async findProjectById(projectId) {
+    if (useMemory) {
+      return memoryStore.projects.find(p => p.id === projectId) || null;
+    }
+    const res = await pool.query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    return res.rows[0] || null;
+  },
+
+  async upsertProject(projectData) {
+    if (useMemory) {
+      const idx = memoryStore.projects.findIndex(p => p.id === projectData.id);
+      const now = new Date().toISOString();
+      const data = { ...projectData, updated_at: now };
+      if (idx > -1) {
+        // Keep created_at
+        data.created_at = memoryStore.projects[idx].created_at || now;
+        memoryStore.projects[idx] = data;
+      } else {
+        data.created_at = now;
+        memoryStore.projects.unshift(data);
+      }
+      saveUsersToFile();
+      return data;
+    }
+    const { id, user_id, title, category, tool, year, accent, gradient, image, icon, tags, description, project_data } = projectData;
+    const res = await pool.query(
+      `INSERT INTO projects (id, user_id, title, category, tool, year, accent, gradient, image, icon, tags, description, project_data, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+       ON CONFLICT (id)
+       DO UPDATE SET title = EXCLUDED.title, category = EXCLUDED.category, tool = EXCLUDED.tool,
+                     accent = EXCLUDED.accent, gradient = EXCLUDED.gradient, image = EXCLUDED.image,
+                     icon = EXCLUDED.icon, tags = EXCLUDED.tags, description = EXCLUDED.description,
+                     project_data = EXCLUDED.project_data, updated_at = NOW()
+       RETURNING *`,
+      [id, user_id, title, category, tool, year, accent, gradient, image, icon, JSON.stringify(tags), description, JSON.stringify(project_data)]
+    );
+    return res.rows[0];
+  },
+
+  async deleteProject(projectId) {
+    if (useMemory) {
+      const lenBefore = memoryStore.projects.length;
+      memoryStore.projects = memoryStore.projects.filter(p => p.id !== projectId);
+      saveUsersToFile();
+      return lenBefore > memoryStore.projects.length;
+    }
+    const res = await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
+    return res.rowCount > 0;
   }
 };
 

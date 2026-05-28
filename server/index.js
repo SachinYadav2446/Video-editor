@@ -189,6 +189,116 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+// ─── Authentication Middleware ──────────────────────────────────────────────
+const requireAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: 'No token provided.' });
+  }
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid or expired token.' });
+  }
+};
+
+// ─── Projects Endpoints ──────────────────────────────────────────────────────
+
+// GET /api/projects — Get user projects
+app.get('/api/projects', requireAuth, async (req, res) => {
+  try {
+    const projects = await db.findProjectsByUser(req.user.id);
+    const mapped = projects.map(p => ({
+      id: p.id,
+      title: p.title,
+      category: p.category,
+      tool: p.tool,
+      year: p.year,
+      accent: p.accent,
+      gradient: p.gradient,
+      image: p.image,
+      icon: p.icon,
+      tags: typeof p.tags === 'string' ? JSON.parse(p.tags) : p.tags,
+      description: p.description,
+      data: typeof p.project_data === 'string' ? JSON.parse(p.project_data) : p.project_data
+    }));
+    res.json(mapped);
+  } catch (err) {
+    console.error('Error fetching projects:', err.message);
+    res.status(500).json({ error: 'Server error fetching projects.' });
+  }
+});
+
+// POST /api/projects — Create or update project
+app.post('/api/projects', requireAuth, async (req, res) => {
+  try {
+    const { id, title, category, tool, year, accent, gradient, image, icon, tags, description, data } = req.body;
+    if (!id || !title || !category || !tool) {
+      return res.status(400).json({ error: 'Missing required project fields.' });
+    }
+    const p = await db.upsertProject({
+      id,
+      user_id: req.user.id,
+      title,
+      category,
+      tool,
+      year: year || new Date().getFullYear().toString(),
+      accent: accent || '#d4a574',
+      gradient: gradient || 'linear-gradient(135deg,#1e110a 0%,#3a2215 50%,#0c0a09 100%)',
+      image: image || null,
+      icon: icon || null,
+      tags: tags || [],
+      description: description || null,
+      project_data: data || {}
+    });
+    console.log(`💾 Project saved in DB: "${title}" [${id}] for user ${req.user.name}`);
+    res.json({
+      id: p.id,
+      title: p.title,
+      category: p.category,
+      tool: p.tool,
+      year: p.year,
+      accent: p.accent,
+      gradient: p.gradient,
+      image: p.image,
+      icon: p.icon,
+      tags: typeof p.tags === 'string' ? JSON.parse(p.tags) : p.tags,
+      description: p.description,
+      data: typeof p.project_data === 'string' ? JSON.parse(p.project_data) : p.project_data
+    });
+  } catch (err) {
+    console.error('Error saving project:', err.message);
+    res.status(500).json({ error: 'Server error saving project.' });
+  }
+});
+
+// DELETE /api/projects/:id — Delete project
+app.delete('/api/projects/:id', requireAuth, async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const project = await db.findProjectById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found.' });
+    }
+    if (project.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized to delete this project.' });
+    }
+    const deleted = await db.deleteProject(projectId);
+    if (deleted) {
+      console.log(`🗑️ Deleted project [${projectId}]`);
+      res.json({ success: true, message: 'Project deleted successfully.' });
+    } else {
+      res.status(500).json({ error: 'Could not delete project.' });
+    }
+  } catch (err) {
+    console.error('Error deleting project:', err.message);
+    res.status(500).json({ error: 'Server error deleting project.' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'Creatify API' });
