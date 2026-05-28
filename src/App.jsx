@@ -4,6 +4,12 @@ import AuthPage from "./components/AuthPage";
 import PresentationPage from "./components/PresentationPage";
 import VideoEditor from "./components/VideoEditor";
 import ProfilePage from "./components/ProfilePage";
+import ImageEditor from "./components/ImageEditor";
+import LogoMaker from "./components/LogoMaker";
+import SocialStudio from "./components/SocialStudio";
+import Documents from "./components/Documents";
+import PrintDesign from "./components/PrintDesign";
+import AiMagic from "./components/AiMagic";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -11,6 +17,13 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [appTheme, setAppTheme] = useState(() => localStorage.getItem("creatify_theme") || "light");
   const [activePresentation, setActivePresentation] = useState(null);
+  const [activeVideoProject, setActiveVideoProject] = useState(null);
+  const [activeImageProject, setActiveImageProject] = useState(null);
+  const [activeLogoProject, setActiveLogoProject] = useState(null);
+  const [activeSocialProject, setActiveSocialProject] = useState(null);
+  const [activeDocProject, setActiveDocProject] = useState(null);
+  const [activePrintProject, setActivePrintProject] = useState(null);
+  const [activeAiProject, setActiveAiProject] = useState(null);
 
   // Sync theme setting to body/root styles for seamless app-wide integration
   useEffect(() => {
@@ -82,6 +95,48 @@ export default function App() {
     } else if (page === "presentation") {
       setActivePresentation(null); // Load clean editor
       setCurrentPage("presentation");
+    } else if (page === "editor_load") {
+      setActiveVideoProject(data);
+      setCurrentPage("editor");
+    } else if (page === "editor") {
+      setActiveVideoProject(null); // Load clean editor
+      setCurrentPage("editor");
+    } else if (page === "image_editor_load") {
+      setActiveImageProject(data);
+      setCurrentPage("image_editor");
+    } else if (page === "image_editor") {
+      setActiveImageProject(null);
+      setCurrentPage("image_editor");
+    } else if (page === "logo_maker_load") {
+      setActiveLogoProject(data);
+      setCurrentPage("logo_maker");
+    } else if (page === "logo_maker") {
+      setActiveLogoProject(null);
+      setCurrentPage("logo_maker");
+    } else if (page === "social_studio_load") {
+      setActiveSocialProject(data);
+      setCurrentPage("social_studio");
+    } else if (page === "social_studio") {
+      setActiveSocialProject(null);
+      setCurrentPage("social_studio");
+    } else if (page === "documents_load") {
+      setActiveDocProject(data);
+      setCurrentPage("documents");
+    } else if (page === "documents") {
+      setActiveDocProject(null);
+      setCurrentPage("documents");
+    } else if (page === "print_design_load") {
+      setActivePrintProject(data);
+      setCurrentPage("print_design");
+    } else if (page === "print_design") {
+      setActivePrintProject(null);
+      setCurrentPage("print_design");
+    } else if (page === "ai_magic_load") {
+      setActiveAiProject(data);
+      setCurrentPage("ai_magic");
+    } else if (page === "ai_magic") {
+      setActiveAiProject(null);
+      setCurrentPage("ai_magic");
     } else {
       setCurrentPage(page);
     }
@@ -130,11 +185,72 @@ export default function App() {
     );
   }
 
+  if (currentPage === "image_editor") {
+    return (
+      <ImageEditor
+        onBack={() => setCurrentPage("home")}
+        user={user}
+        initialProject={activeImageProject}
+      />
+    );
+  }
+
+  if (currentPage === "logo_maker") {
+    return (
+      <LogoMaker
+        onBack={() => setCurrentPage("home")}
+        user={user}
+        initialProject={activeLogoProject}
+      />
+    );
+  }
+
+  if (currentPage === "social_studio") {
+    return (
+      <SocialStudio
+        onBack={() => setCurrentPage("home")}
+        user={user}
+        initialProject={activeSocialProject}
+      />
+    );
+  }
+
+  if (currentPage === "documents") {
+    return (
+      <Documents
+        onBack={() => setCurrentPage("home")}
+        user={user}
+        initialProject={activeDocProject}
+      />
+    );
+  }
+
+  if (currentPage === "print_design") {
+    return (
+      <PrintDesign
+        onBack={() => setCurrentPage("home")}
+        user={user}
+        initialProject={activePrintProject}
+      />
+    );
+  }
+
+  if (currentPage === "ai_magic") {
+    return (
+      <AiMagic
+        onBack={() => setCurrentPage("home")}
+        user={user}
+        initialProject={activeAiProject}
+      />
+    );
+  }
+
   // Video Editor (default / "editor" page)
   return (
     <VideoEditor
       onBack={() => setCurrentPage("home")}
       user={user}
+      initialProject={activeVideoProject}
     />
   );
 }

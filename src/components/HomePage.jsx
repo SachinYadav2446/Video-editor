@@ -16,6 +16,167 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [activeNav, setActiveNav]             = useState("home");
   const [navScrolled, setNavScrolled]         = useState(false);
+
+  // Dynamic Past Works state
+  const [pastWorks, setPastWorks] = useState(() => {
+    const saved = localStorage.getItem("creatify_past_works");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error("Failed to parse past works", e);
+      }
+    }
+    
+    // Fallback seed projects
+    const defaultWorks = [
+      {
+        id: "cinema-intro",
+        title: "Cinematic Intro Reel",
+        category: "Video Edit",
+        tool: "Video Editor",
+        year: "2026",
+        accent: "#8b5a2b",
+        gradient: "linear-gradient(135deg, #1e110a 0%, #3a2215 50%, #0c0a09 100%)",
+        image: videoPrev,
+        tags: ["4K UHD", "LUTs", "15s"],
+        desc: "Cinematic intro sequence with warm amber color LUTs and smooth title transitions.",
+        data: {
+          tracks: [
+            { id: "track_v1", type: "video", name: "Video Track 1", clips: [
+              { id: "clip_v1", name: "Cinematic Forest", start: 0, duration: 10, type: "video", url: "https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4" }
+            ]},
+            { id: "track_t1", type: "text", name: "Title Overlay", clips: [
+              { id: "clip_t1", name: "Main Title", start: 2, duration: 6, type: "text", text: "THE CINEMATIC EXPERIENCE" }
+            ]}
+          ],
+          duration: 15
+        }
+      },
+      {
+        id: "pitch-deck",
+        title: "Startup Pitch Deck",
+        category: "Presentation",
+        tool: "Slide Studio",
+        year: "2026",
+        accent: "#a0522d",
+        gradient: "linear-gradient(135deg, #111827 0%, #1f2937 50%, #030712 100%)",
+        image: pptPrev,
+        tags: ["10 Slides", "Vector", "Pitch"],
+        desc: "Modern corporate pitch deck layout with minimalist vector grid alignment.",
+        data: {
+          themeIdx: 0,
+          slides: [
+            { id: "s1", layout: "title", title: "Next Gen Platform", subtitle: "Building the future of creation", bulletPoints: ["Empowering millions of creators", "Zero friction deployment", "Fully decentralized platform"], elements: [] },
+            { id: "s2", layout: "split", title: "Market Growth", subtitle: "Traction and projections", bulletPoints: ["300% YoY growth", "High user retention", "Profitable from day one"], elements: [] }
+          ]
+        }
+      }
+    ];
+
+    localStorage.setItem("creatify_past_works", JSON.stringify(defaultWorks));
+    return defaultWorks;
+  });
+
+  // Reload past works when component mounts or user session changes
+  useEffect(() => {
+    const token = localStorage.getItem("creatify_token");
+    if (token) {
+      fetch("http://localhost:3001/api/projects", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error("Failed to fetch from DB");
+      })
+      .then(dbProjects => {
+        if (dbProjects) {
+          // If we have projects in DB, prioritize them
+          if (dbProjects.length > 0) {
+            setPastWorks(dbProjects);
+            localStorage.setItem("creatify_past_works", JSON.stringify(dbProjects));
+          } else {
+            // DB is empty, check if we have localStorage work we can sync to DB!
+            const localSaved = localStorage.getItem("creatify_past_works");
+            if (localSaved) {
+              try {
+                const parsed = JSON.parse(localSaved);
+                if (parsed.length > 0) {
+                  setPastWorks(parsed);
+                  // Sync local projects to the server DB
+                  parsed.forEach(proj => {
+                    fetch("http://localhost:3001/api/projects", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                      },
+                      body: JSON.stringify(proj)
+                    }).catch(e => console.error("Auto-sync project failed:", e));
+                  });
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      })
+      .catch(err => {
+        console.warn("DB load failed, falling back to local:", err.message);
+        const saved = localStorage.getItem("creatify_past_works");
+        if (saved) {
+          try {
+            setPastWorks(JSON.parse(saved));
+          } catch (e) {}
+        }
+      });
+    } else {
+      const saved = localStorage.getItem("creatify_past_works");
+      if (saved) {
+        try {
+          setPastWorks(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to reload past works", e);
+        }
+      }
+    }
+  }, [user]);
+
+  const handleDeletePastWork = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
+    
+    const token = localStorage.getItem("creatify_token");
+    if (token) {
+      try {
+        await fetch(`http://localhost:3001/api/projects/${id}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        console.log("Deleted project from DB successfully");
+      } catch (err) {
+        console.error("Failed to delete project from DB:", err.message);
+      }
+    }
+
+    const saved = JSON.parse(localStorage.getItem("creatify_past_works") || "[]");
+    const updated = saved.filter(w => w.id !== id);
+    localStorage.setItem("creatify_past_works", JSON.stringify(updated));
+    setPastWorks(updated);
+
+    if (user && user.email) {
+      const videoKey = `creatify_video_projects_${user.email}`;
+      const savedVideos = JSON.parse(localStorage.getItem(videoKey) || "[]");
+      localStorage.setItem(videoKey, JSON.stringify(savedVideos.filter(p => p.id !== id)));
+
+      const pptKey = `creatify_presentations_${user.email}`;
+      const savedPpts = JSON.parse(localStorage.getItem(pptKey) || "[]");
+      localStorage.setItem(pptKey, JSON.stringify(savedPpts.filter(p => p.id !== id)));
+    }
+  };
   const canvasRef  = useRef(null);
   const profileDropdownRef = useRef(null);
 
@@ -420,12 +581,15 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
           </div>
         </div>
 
+        {/* Spacer to push links to the right */}
+        <div style={{ flex: 1 }} />
+
         {/* Nav links – smooth scroll within homepage */}
-        <div style={{ display:"flex", marginLeft:"auto", gap:"2px", alignItems:"center", paddingRight:"32px" }}>
+        <div style={{ display:"flex", gap:"4px", alignItems:"center" }}>
           {[
             { label:"home",      id:null,                 text:"Home" },
             { label:"tools",     id:"tools-section",      text:"Tools" },
-            { label:"templates", id:"templates-showcase",  text:"Templates" },
+            { label:"about",     id:"about-section",      text:"About" },
             { label:"pipeline",  id:"pipeline-section",   text:"How it works" },
             { label:"pricing",   id:"pricing-section",    text:"Pricing" },
           ].map(({ label, id, text }) => {
@@ -458,14 +622,12 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
                     e.currentTarget.style.color = colors.text;
                     e.currentTarget.style.background = isDark ? "rgba(212,165,116,0.09)" : "rgba(139,90,43,0.05)";
                   }
-                  setCursorHovered(true);
                 }}
                 onMouseLeave={e => {
                   if (!isActive) {
                     e.currentTarget.style.color = colors.textMuted;
                     e.currentTarget.style.background = "transparent";
                   }
-                  setCursorHovered(false);
                 }}
               >
                 {text}
@@ -473,6 +635,9 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
             );
           })}
         </div>
+
+        {/* Spacer between links and CTAs */}
+        <div style={{ width: "32px" }} />
 
         {/* Right side CTAs */}
         <div style={{ display:"flex", gap:"10px", alignItems:"center", flexShrink:0 }}>
@@ -677,33 +842,36 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
               tags     — array of short feature strings
               desc     — one-sentence description (shown on hover)
           ────────────────────────────────────────────────────────────────────── */}
-          {([
-            /* --- paste your entries below, format shown above --- */
-            /*
-            {
-              title: "Project Name",
-              category: "Category",
-              tool: "Tool Used",
-              year: "2024",
-              accent: "#d4a574",
-              gradient: "linear-gradient(135deg, #1a1207 0%, #2d2010 50%, #0c0a09 100%)",
-              image: "",
-              icon: "🎨",
-              tags: ["Tag 1", "Tag 2"],
-              desc: "Short description of what was made.",
-            },
-            */
-          ]).map((work, i) => {
+          {pastWorks.map((work, i) => {
             const isHov = hoveredWork === i;
             return (
-              <div key={i}
+              <div key={work.id || i}
                 onMouseEnter={() => setHoveredWork(i)}
                 onMouseLeave={() => setHoveredWork(null)}
+                onClick={() => {
+                  if (work.category === "Video Edit") {
+                    onNavigate("editor_load", work);
+                  } else if (work.category === "Presentation") {
+                    onNavigate("presentation_load", work);
+                  } else if (work.category === "Image Edit") {
+                    onNavigate("image_editor_load", work);
+                  } else if (work.category === "Logo Design") {
+                    onNavigate("logo_maker_load", work);
+                  } else if (work.category === "Social Post") {
+                    onNavigate("social_studio_load", work);
+                  } else if (work.category === "Document") {
+                    onNavigate("documents_load", work);
+                  } else if (work.category === "Print Layout") {
+                    onNavigate("print_design_load", work);
+                  } else if (work.category === "AI Design") {
+                    onNavigate("ai_magic_load", work);
+                  }
+                }}
                 style={{
                   flexShrink: 0,
-                  width: "280px",
-                  height: "360px",
-                  borderRadius: "20px",
+                  width: "240px",
+                  height: "300px",
+                  borderRadius: "16px",
                   scrollSnapAlign: "start",
                   position: "relative",
                   overflow: "hidden",
@@ -711,46 +879,85 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
                   border: isHov ? `1px solid ${work.accent || "#8b5a2b"}55` : `1px solid ${colors.border}`,
                   cursor: "pointer",
                   transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s",
-                  transform: isHov ? "translateY(-6px) scale(1.015)" : "none",
-                  boxShadow: isHov ? `0 24px 60px ${(work.accent||"#8b5a2b")}28` : "0 4px 20px rgba(0,0,0,0.18)",
+                  transform: isHov ? "translateY(-4px) scale(1.01)" : "none",
+                  boxShadow: isHov ? `0 16px 40px ${(work.accent||"#8b5a2b")}20` : "0 4px 15px rgba(0,0,0,0.15)",
                   userSelect: "none",
                 }}
               >
+                {/* Delete button */}
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeletePastWork(work.id);
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "50%",
+                    background: "rgba(0,0,0,0.6)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "rgba(255,255,255,0.6)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    zIndex: 15,
+                    fontSize: "11px",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = "#ef4444";
+                    e.currentTarget.style.borderColor = "#ef4444";
+                    e.currentTarget.style.background = "rgba(239,68,68,0.1)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = "rgba(255,255,255,0.6)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+                    e.currentTarget.style.background = "rgba(0,0,0,0.6)";
+                  }}
+                  title="Delete Project"
+                >
+                  ✕
+                </button>
+
                 {/* Accent orb */}
-                <div style={{ position:"absolute", width:"160px", height:"160px", borderRadius:"50%", filter:"blur(50px)", background:(work.accent||"#8b5a2b")+"2a", top:"-40px", right:"-40px", opacity: isHov ? 1 : 0.5, transition:"opacity 0.4s", pointerEvents:"none" }} />
+                <div style={{ position:"absolute", width:"120px", height:"120px", borderRadius:"50%", filter:"blur(40px)", background:(work.accent||"#8b5a2b")+"2a", top:"-30px", right:"-30px", opacity: isHov ? 1 : 0.5, transition:"opacity 0.4s", pointerEvents:"none" }} />
 
                 {/* Image or icon */}
                 {work.image ? (
-                  <img src={work.image} alt={work.title} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity: isHov ? 0.55 : 0.35, transition:"opacity 0.4s" }} />
+                  <img src={work.image} alt={work.title} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity: isHov ? 0.5 : 0.3, transition:"opacity 0.4s" }} />
                 ) : (
-                  <div style={{ position:"absolute", top:"50%", left:"50%", transform:`translate(-50%,-50%) scale(${isHov?0.8:1})`, fontSize:"52px", opacity: isHov ? 0.07 : 0.13, transition:"all 0.4s", pointerEvents:"none", userSelect:"none" }}>{work.icon || "🎨"}</div>
+                  <div style={{ position:"absolute", top:"50%", left:"50%", transform:`translate(-50%,-50%) scale(${isHov?0.8:1})`, fontSize:"44px", opacity: isHov ? 0.07 : 0.13, transition:"all 0.4s", pointerEvents:"none", userSelect:"none" }}>{work.icon || "🎬"}</div>
                 )}
 
                 {/* Top bar */}
-                <div style={{ position:"absolute", top:"18px", left:"18px", right:"18px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <div style={{ fontSize:"10px", color: work.accent||"#d4a574", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", background:(work.accent||"#8b5a2b")+"1a", border:`1px solid ${(work.accent||"#8b5a2b")}33`, borderRadius:"30px", padding:"3px 10px" }}>
+                <div style={{ position:"absolute", top:"14px", left:"14px", right:"14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ fontSize:"9px", color: work.accent||"#d4a574", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", background:(work.accent||"#8b5a2b")+"1a", border:`1px solid ${(work.accent||"#8b5a2b")}33`, borderRadius:"30px", padding:"2px 8px" }}>
                     {work.category || "Project"}
                   </div>
-                  <div style={{ fontSize:"10px", color:"rgba(255,255,255,0.3)", fontWeight:400 }}>{work.year || ""}</div>
+                  <div style={{ fontSize:"9px", color:"rgba(255,255,255,0.25)", fontWeight:400 }}>{work.year || ""}</div>
                 </div>
 
                 {/* Bottom panel */}
-                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"20px 18px", background:"linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 65%, transparent 100%)", transform: isHov ? "none" : "translateY(4px)", opacity: isHov ? 1 : 0.9, transition:"all 0.4s" }}>
+                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"16px 14px", background:"linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 70%, transparent 100%)", transform: isHov ? "none" : "translateY(2px)", opacity: isHov ? 1 : 0.95, transition:"all 0.4s" }}>
                   {work.tool && (
-                    <div style={{ fontSize:"9px", fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase", color: work.accent||"#d4a574", marginBottom:"6px", opacity:0.85 }}>{work.tool}</div>
+                    <div style={{ fontSize:"8px", fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase", color: work.accent||"#d4a574", marginBottom:"4px", opacity:0.8 }}>{work.tool}</div>
                   )}
-                  <div style={{ fontFamily:"Syne,sans-serif", fontSize:"16px", fontWeight:800, color:"#fff", letterSpacing:"-0.02em", lineHeight:1.2, marginBottom: isHov && work.desc ? "8px" : 0 }}>
+                  <div style={{ fontFamily:"Syne,sans-serif", fontSize:"14px", fontWeight:800, color:"#fff", letterSpacing:"-0.02em", lineHeight:1.2, marginBottom: isHov && work.desc ? "6px" : 0 }}>
                     {work.title || "Untitled Project"}
                   </div>
                   {work.desc && (
-                    <div style={{ fontSize:"12px", color:"rgba(255,255,255,0.48)", lineHeight:1.5, fontWeight:300, maxHeight: isHov ? "48px" : "0px", overflow:"hidden", transition:"max-height 0.4s" }}>
+                    <div style={{ fontSize:"11px", color:"rgba(255,255,255,0.45)", lineHeight:1.45, fontWeight:300, maxHeight: isHov ? "42px" : "0px", overflow:"hidden", transition:"max-height 0.4s" }}>
                       {work.desc}
                     </div>
                   )}
                   {work.tags && work.tags.length > 0 && (
-                    <div style={{ display:"flex", gap:"5px", flexWrap:"wrap", marginTop: isHov ? "10px" : 0, maxHeight: isHov ? "40px" : 0, overflow:"hidden", transition:"max-height 0.4s" }}>
+                    <div style={{ display:"flex", gap:"4px", flexWrap:"wrap", marginTop: isHov ? "8px" : 0, maxHeight: isHov ? "36px" : 0, overflow:"hidden", transition:"max-height 0.4s" }}>
                       {work.tags.map(t => (
-                        <span key={t} style={{ fontSize:"9px", color:"rgba(255,255,255,0.35)", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"3px", padding:"2px 7px", letterSpacing:"0.04em" }}>{t}</span>
+                        <span key={t} style={{ fontSize:"8px", color:"rgba(255,255,255,0.35)", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"3px", padding:"1px 5px", letterSpacing:"0.04em" }}>{t}</span>
                       ))}
                     </div>
                   )}
@@ -760,23 +967,23 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
           })}
 
           {/* Always-visible empty slot as a visual guide when no work added yet */}
-          {( [
-            "Your project here","Add a work","Coming soon","Add a work","Add a work","Add a work"
-          ] ).map((label, i) => (
+          {pastWorks.length < 3 && ( [
+            "Your project here","Add a work","Coming soon"
+          ].slice(0, 3 - pastWorks.length) ).map((label, i) => (
             <div key={`empty-${i}`} style={{
-              flexShrink: 0, width: "280px", height: "360px", borderRadius: "20px",
+              flexShrink: 0, width: "240px", height: "300px", borderRadius: "16px",
               scrollSnapAlign: "start",
               background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.025)",
               border: `1.5px dashed ${colors.border}`,
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              gap: "12px",
+              gap: "10px",
             }}>
-              <div style={{ width:"36px", height:"36px", borderRadius:"50%", border:`1.5px dashed ${colors.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <div style={{ width:"32px", height:"32px", borderRadius:"50%", border:`1.5px dashed ${colors.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
                   <path d="M7 1v12M1 7h12" stroke={isDark?"rgba(212,165,116,0.25)":"rgba(139,90,43,0.2)"} strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <div style={{ fontSize:"12px", color: isDark ? "rgba(212,165,116,0.2)" : "rgba(139,90,43,0.2)", fontWeight:400, letterSpacing:"0.04em" }}>{label}</div>
+              <div style={{ fontSize:"11px", color: isDark ? "rgba(212,165,116,0.2)" : "rgba(139,90,43,0.2)", fontWeight:400, letterSpacing:"0.04em" }}>{label}</div>
             </div>
           ))}
         </div>
@@ -817,7 +1024,17 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
                   key={tool.id}
                   onMouseEnter={() => { setHoveredCard(tool.id); setCursorHovered(true); }}
                   onMouseLeave={() => { setHoveredCard(null); setCursorHovered(false); }}
-                  onClick={() => onNavigate(tool.id === "video" ? "editor" : tool.id === "ppt" ? "presentation" : "auth", "signup")}
+                  onClick={() => {
+                    if (tool.id === "video") onNavigate("editor");
+                    else if (tool.id === "ppt") onNavigate("presentation");
+                    else if (tool.id === "image") onNavigate("image_editor");
+                    else if (tool.id === "logo") onNavigate("logo_maker");
+                    else if (tool.id === "social") onNavigate("social_studio");
+                    else if (tool.id === "doc") onNavigate("documents");
+                    else if (tool.id === "print") onNavigate("print_design");
+                    else if (tool.id === "ai") onNavigate("ai_magic");
+                    else onNavigate("auth", "signup");
+                  }}
                   style={{
                     gridColumn: `span ${tool.colSpan}`,
                     gridRow:    `span ${tool.rowSpan}`,
@@ -1230,108 +1447,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
         </div>
       </section>
 
-      {/* ── INTERACTIVE TEMPLATES SHOWCASE GALLERY ── */}
-      <section className="reveal" id="templates-showcase" style={{
-        padding: "100px 48px",
-        maxWidth: "1400px",
-        margin: "0 auto",
-        opacity: revealedSections.has("templates-showcase") ? 1 : 0,
-        transform: revealedSections.has("templates-showcase") ? "translateY(0)" : "translateY(40px)",
-        transition: "opacity 0.7s, transform 0.7s"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "56px", flexWrap: "wrap", gap: "16px" }}>
-          <div>
-            <div style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#8b5a2b", textTransform: "uppercase", marginBottom: "14px", fontWeight: 500 }}>High-end starting points</div>
-            <h2 style={{ fontFamily: "Syne,sans-serif", fontSize: "clamp(36px,5vw,60px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: colors.text }}>Creative presets.</h2>
-          </div>
-          <p style={{ fontSize: "16px", color: colors.textMuted, maxWidth: "440px", lineHeight: 1.65, fontWeight: 300 }}>
-            Choose from a catalog of premium designs. Launch directly into the studio workspace with pre-configured timelines.
-          </p>
-        </div>
 
-        {/* Templates Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px" }}>
-          {[
-            { id: "cinema", name: "Cinematic Intro", desc: "Warm amber color LUT, cinematic aspect ratio, title fades.", ratio: "16:9", stats: "4K UHD · 24 FPS · 15s", image: videoPrev, color: "#8b5a2b", type: "editor" },
-            { id: "pitch", name: "Startup Pitch Deck", desc: "Minimalist slide architecture, charts, dynamic animations.", ratio: "16:9", stats: "10 Slides · Vector · 30 FPS", image: pptPrev, color: "#a0522d", type: "presentation" },
-            { id: "reel", name: "Social Glitch Reel", desc: "Glitch transition overlays, text safe zone grids.", ratio: "9:16", stats: "1080p · 60 FPS · 30s", image: socialPrev, color: "#c49a6c", type: "editor" },
-            { id: "brand", name: "Branding Kit Studio", desc: "Vector grids, matching fonts, dynamic color guides.", ratio: "1:1", stats: "Vectors · SVG · CMYK", image: imagePrev, color: "#d4a574", type: "auth" }
-          ].map(tpl => {
-            const isHovered = hoveredTemplate === tpl.id;
-            return (
-              <div
-                key={tpl.id}
-                onMouseEnter={() => { setHoveredTemplate(tpl.id); setCursorHovered(true); }}
-                onMouseLeave={() => { setHoveredTemplate(null); setCursorHovered(false); }}
-                onClick={() => onNavigate(tpl.type, "signup")}
-                style={{
-                  background: isDark ? "rgba(12, 10, 9, 0.6)" : "rgba(255, 255, 255, 0.6)",
-                  border: `1px solid ${isHovered ? tpl.color : colors.border}`,
-                  borderRadius: "24px",
-                  padding: "16px",
-                  cursor: "pointer",
-                  transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
-                  transform: isHovered ? "translateY(-4px)" : "none",
-                  boxShadow: isHovered ? `0 20px 40px ${tpl.color}15` : colors.cardShadow,
-                  display: "flex",
-                  flexDirection: "column",
-                  height: "100%"
-                }}
-              >
-                {/* Mockup Preview Area */}
-                <div style={{
-                  position: "relative",
-                  aspectRatio: "16/10",
-                  borderRadius: "16px",
-                  overflow: "hidden",
-                  background: "#131110",
-                  marginBottom: "20px"
-                }}>
-                  <img src={tpl.image} alt={tpl.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s", transform: isHovered ? "scale(1.05)" : "none" }} />
-                  <div style={{ position: "absolute", inset: 0, background: isHovered ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.5)", transition: "background 0.35s" }} />
-                  {/* Badge */}
-                  <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 8px", borderRadius: "20px", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)", fontSize: "9px", color: tpl.color, fontWeight: 700, border: `1px solid ${tpl.color}40` }}>
-                    {tpl.ratio} Format
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                  <h3 style={{ fontFamily: "Syne,sans-serif", fontSize: "16px", fontWeight: 800, color: colors.text, marginBottom: "8px", letterSpacing: "-0.02em" }}>{tpl.name}</h3>
-                  <p style={{ fontSize: "12.5px", color: colors.textMuted, lineHeight: 1.5, fontWeight: 300, margin: "0 0 16px 0", flex: 1 }}>
-                    {tpl.desc}
-                  </p>
-                  
-                  {/* Stats & Launch CTA */}
-                  <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    borderTop: `1px solid ${colors.border}`,
-                    paddingTop: "12px",
-                    marginTop: "auto"
-                  }}>
-                    <span style={{ fontSize: "10px", color: colors.textMuted, fontWeight: 500, fontFamily: "monospace" }}>{tpl.stats}</span>
-                    <span style={{
-                      fontSize: "11px",
-                      color: tpl.color,
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      opacity: isHovered ? 1 : 0.7,
-                      transform: isHovered ? "translateX(4px)" : "none",
-                      transition: "all 0.3s"
-                    }}>
-                      Use ➔
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       {/* Footer CTA */}
       <section style={{ background:"linear-gradient(135deg,#1a0f0a,#2d1a0f)", padding:"100px 48px", textAlign:"center", width:"100%", position:"relative", overflow:"hidden" }}>

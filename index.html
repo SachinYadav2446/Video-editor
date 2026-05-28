@@ -11,9 +11,149 @@
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Instrument+Serif:ital@0;1&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body { width: 100%; height: 100%; overflow-x: hidden; }
+      html, body { width: 100%; height: 100%; overflow-x: hidden; background: #0c0a09; color: #e5e5e5; font-family: 'Poppins', sans-serif; }
       body { margin: 0; padding: 0; }
       #root { width: 100%; min-height: 100vh; }
+
+      /* Custom scrollbar styling */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+      ::-webkit-scrollbar-thumb { background: rgba(212,165,116,0.2); border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(212,165,116,0.4); }
+
+      /* Global Glass Panels */
+      .glass-panel {
+        background: rgba(19, 17, 16, 0.75) !important;
+        backdrop-filter: blur(16px) saturate(120%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(120%) !important;
+        border: 1px solid rgba(212,165,116,0.18) !important;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+      }
+
+      /* Global inputs & select buttons */
+      input[type="text"], input[type="number"], input[type="date"], input[type="time"], textarea, select {
+        background: #0c0a09 !important;
+        color: #fff !important;
+        border: 1px solid rgba(212,165,116,0.15) !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-size: 12px !important;
+        outline: none !important;
+        transition: all 0.2s ease-in-out !important;
+      }
+      input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, input[type="time"]:focus, textarea:focus, select:focus {
+        border-color: #f5c842 !important;
+        box-shadow: 0 0 10px rgba(245, 200, 66, 0.15) !important;
+      }
+
+      /* Global tool button styling */
+      .tool-btn {
+        background: rgba(212,165,116,0.05) !important;
+        border: 1px solid rgba(212,165,116,0.15) !important;
+        color: #e5e5e5 !important;
+        padding: 6px 14px !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+        font-size: 12px !important;
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 400 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 7px !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      .tool-btn:hover {
+        background: rgba(212,165,116,0.12) !important;
+        color: #f5c842 !important;
+        border-color: rgba(212,165,116,0.4) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(212,165,116,0.08) !important;
+      }
+      .tool-btn:active {
+        transform: translateY(0) !important;
+      }
+      .tool-btn:disabled {
+        opacity: 0.35 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+        transform: none !important;
+      }
+      .tool-btn.primary {
+        background: linear-gradient(135deg, #8b5a2b, #f5c842) !important;
+        border: none !important;
+        color: #fff !important;
+        box-shadow: 0 2px 10px rgba(139,90,43,0.3) !important;
+        font-weight: 500 !important;
+      }
+      .tool-btn.primary:hover {
+        transform: translateY(-1.5px) !important;
+        box-shadow: 0 6px 18px rgba(139,90,43,0.45) !important;
+        filter: brightness(1.05) !important;
+      }
+      .tool-btn.danger {
+        color: #ef4444 !important;
+        border-color: rgba(239,68,68,0.2) !important;
+        background: rgba(239,68,68,0.04) !important;
+      }
+      .tool-btn.danger:hover {
+        background: rgba(239,68,68,0.14) !important;
+        border-color: #ef4444 !important;
+        color: #ff5555 !important;
+      }
+      .tool-btn.active {
+        background: rgba(212,165,116,0.18) !important;
+        color: #f5c842 !important;
+        border-color: #f5c842 !important;
+      }
+
+      /* Premium Slider Customization */
+      .filter-slider, input[type="range"] {
+        -webkit-appearance: none !important;
+        width: 100% !important;
+        height: 4px !important;
+        background: rgba(212,165,116,0.15) !important;
+        border-radius: 2px !important;
+        outline: none !important;
+        margin: 10px 0 !important;
+        transition: background 0.3s !important;
+      }
+      .filter-slider::-webkit-slider-thumb, input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        width: 14px !important;
+        height: 14px !important;
+        border-radius: 50% !important;
+        background: #f5c842 !important;
+        cursor: pointer !important;
+        box-shadow: 0 0 10px rgba(245,200,66,0.4) !important;
+        transition: transform 0.15s ease-in-out !important;
+      }
+      .filter-slider::-webkit-slider-thumb:hover, input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2) !important;
+      }
+
+      /* Color Picker Circle Preview */
+      input[type="color"] {
+        -webkit-appearance: none !important;
+        border: none !important;
+        width: 32px !important;
+        height: 24px !important;
+        border-radius: 6px !important;
+        cursor: pointer !important;
+        background: none !important;
+      }
+      input[type="color"]::-webkit-color-swatch-wrapper {
+        padding: 0 !important;
+      }
+      input[type="color"]::-webkit-color-swatch {
+        border: 1px solid rgba(212,165,116,0.25) !important;
+        border-radius: 6px !important;
+        box-shadow: inset 0 1px 4px rgba(0,0,0,0.3) !important;
+      }
     </style>
   </head>
   <body>
