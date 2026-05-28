@@ -82,7 +82,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   useEffect(() => {
     const token = localStorage.getItem("creatify_token");
     if (token) {
-      fetch("http://localhost:3001/api/projects", {
+      fetch((window.API_URL || "http://localhost:3001") + "/api/projects", {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -107,7 +107,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
                   setPastWorks(parsed);
                   // Sync local projects to the server DB
                   parsed.forEach(proj => {
-                    fetch("http://localhost:3001/api/projects", {
+                    fetch((window.API_URL || "http://localhost:3001") + "/api/projects", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
@@ -149,7 +149,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
     const token = localStorage.getItem("creatify_token");
     if (token) {
       try {
-        await fetch(`http://localhost:3001/api/projects/${id}`, {
+        await fetch(`${window.API_URL || "http://localhost:3001"}/api/projects/${id}`, {
           method: "DELETE",
           headers: {
             "Authorization": `Bearer ${token}`

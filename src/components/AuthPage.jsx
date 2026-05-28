@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = (window.API_URL || (window.API_URL || "http://localhost:3001") + "") + "/api";
 
 // ── Google mock accounts for demo selector ──────────────────────────────────
 const MOCK_GOOGLE_ACCOUNTS = [

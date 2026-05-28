@@ -42,7 +42,7 @@ export default function App() {
 
     const token = localStorage.getItem("creatify_token");
     if (token) {
-      fetch("http://localhost:3001/api/auth/me", {
+      fetch((window.API_URL || "http://localhost:3001") + "/api/auth/me", {
         headers: {
           "Authorization": `Bearer ${token}`
         }

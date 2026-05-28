@@ -440,7 +440,7 @@ export default function ImageEditor({ onBack, user, initialProject }) {
 
     const token = localStorage.getItem("creatify_token");
     if (token) {
-      fetch("http://localhost:3001/api/projects", {
+      fetch((window.API_URL || "http://localhost:3001") + "/api/projects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
