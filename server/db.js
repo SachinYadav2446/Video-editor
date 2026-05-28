@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Pool } = require('pg');
+const { Pool } = require('@neondatabase/serverless');
 const fs = require('fs');
 const path = require('path');
 const dbFilePath = path.join(__dirname, 'users.json');
