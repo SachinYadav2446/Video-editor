@@ -1,0 +1,39 @@
+services:
+  # 1. Static React Web App (Frontend)
+  - type: web
+    name: cinecut-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: cinecut-backend
+          type: web
+          property: host
+
+  # 2. Node.js Express API Server (Backend)
+  - type: web
+    name: cinecut-backend
+    env: node
+    plan: starter
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cinecut-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          name: cinecut-frontend
+          type: web
+          property: host
+
+# 3. Managed PostgreSQL Database Instance
+databases:
+  - name: cinecut-db
+    plan: starter
