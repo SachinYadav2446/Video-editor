@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 
 // Import generated preview images
 import videoPrev  from "../assets/images/video_preview.png";
-import aiPrev     from "../assets/images/ai_preview.png";
 import pptPrev    from "../assets/images/ppt_preview.png";
 import socialPrev from "../assets/images/social_preview.png";
 import imagePrev  from "../assets/images/image_preview.png";
@@ -519,16 +518,15 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   }, []);
 
   // ── Tool definitions (ordered for Bento layout) ──────────────────────────
-  // Grid: 4 columns. Video=2×2, Image=1×1, Logo=1×1, PPT=2×1, Social=1×2, AI=2×2, Doc=1×1, Print=1×1
+  // Grid: 4 columns. Video=2×2, Image=1×1, Logo=1×1, PPT=2×1, Social=2×2, Doc=2×1, Print=2×1
   const tools = [
     { id:"video",  name:"Video Editor",    desc:"Full multi-track timeline with WebGL color grading, audio mixing & in-browser rendering. No uploads needed.", icon:"🎬", color:"#8b5a2b",  tag:"WebGL · WASM",       colSpan:2, rowSpan:2, image: videoPrev  },
     { id:"image",  name:"Image Editor",    desc:"Layers, masks, filters, blend modes. Pro-grade photo editing in your browser.",                               icon:"🖼️", color:"#d4a574",  tag:"Canvas API",          colSpan:1, rowSpan:1, image: imagePrev  },
     { id:"logo",   name:"Logo Maker",      desc:"Vector-based logo studio. AI suggestions, custom icons, SVG export.",                                         icon:"✦",  color:"#f5c842",  tag:"SVG · AI-assisted",   colSpan:1, rowSpan:1, image: null       },
     { id:"ppt",    name:"Presentations",   desc:"Slides that animate. Real-time collaboration, 500+ templates, one-click export.",                             icon:"📊", color:"#a0522d",  tag:"PPTX · PDF · HTML5",  colSpan:2, rowSpan:1, image: pptPrev    },
-    { id:"social", name:"Social Studio",   desc:"All platform sizes at once. Schedule and auto-publish when you're done.",                                     icon:"📱", color:"#c49a6c",  tag:"Stories · Reels",     colSpan:1, rowSpan:2, image: socialPrev },
-    { id:"ai",     name:"AI Magic",        desc:"Describe it, watch it appear. Text-to-design, background removal, smart resize.",                             icon:"⚡", color:"#22d3a8",  tag:"Generative AI",       colSpan:2, rowSpan:2, image: aiPrev,    special: true },
-    { id:"doc",    name:"Documents",       desc:"Rich docs with embedded media, tables, charts. Beautiful by default.",                                        icon:"📄", color:"#deb887",  tag:"DOCX · PDF",          colSpan:1, rowSpan:1, image: null       },
-    { id:"print",  name:"Print Design",    desc:"Flyers, posters, business cards. CMYK-ready, bleed lines included.",                                          icon:"🖨️", color:"#8b5a2b",  tag:"Print-ready PDF",     colSpan:1, rowSpan:1, image: null       },
+    { id:"social", name:"Social Studio",   desc:"All platform sizes at once. Schedule and auto-publish when you're done.",                                     icon:"📱", color:"#c49a6c",  tag:"Stories · Reels",     colSpan:2, rowSpan:2, image: socialPrev },
+    { id:"doc",    name:"Documents",       desc:"Rich docs with embedded media, tables, charts. Beautiful by default.",                                        icon:"📄", color:"#deb887",  tag:"DOCX · PDF",          colSpan:2, rowSpan:1, image: null       },
+    { id:"print",  name:"Print Design",    desc:"Flyers, posters, business cards. CMYK-ready, bleed lines included.",                                          icon:"🖨️", color:"#8b5a2b",  tag:"Print-ready PDF",     colSpan:2, rowSpan:1, image: null       },
   ];
 
   const pricing = [
@@ -760,7 +758,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
       {/* Marquee */}
       <div style={{ padding:"28px 0", borderTop:`1px solid ${colors.border}`, borderBottom:`1px solid ${colors.border}`, overflow:"hidden", background:colors.marqueeBg, transition:"background 0.3s, border-color 0.3s" }}>
         <div style={{ display:"flex", whiteSpace:"nowrap", animation:"marquee 25s linear infinite" }}>
-          {[...Array(2)].flatMap(() => ["Video Editor","Logo Maker","Presentations","Social Media","Brand Kit","AI Generate","Print Design","Documents","Mockups","Infographics"].map((item,i) => (
+          {[...Array(2)].flatMap(() => ["Video Editor","Logo Maker","Presentations","Social Media","Brand Kit","Print Design","Documents","Mockups","Infographics"].map((item,i) => (
             <span key={item+i} style={{ display:"inline-flex", alignItems:"center", gap:"12px", padding:"0 40px", fontSize:"12px", color:colors.textMuted, letterSpacing:"0.06em", textTransform:"uppercase", fontWeight:500 }}>
               <span style={{ width:"4px", height:"4px", background:"#8b5a2b", borderRadius:"50%", flexShrink:0 }} />{item}
             </span>
@@ -863,8 +861,6 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
                     onNavigate("documents_load", work);
                   } else if (work.category === "Print Layout") {
                     onNavigate("print_design_load", work);
-                  } else if (work.category === "AI Design") {
-                    onNavigate("ai_magic_load", work);
                   }
                 }}
                 style={{
@@ -1082,15 +1078,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
                         </div>
                       )}
 
-                      {/* AI typing prompt for ai card */}
-                      {tool.id === "ai" && isHovered && (
-                        <div style={{ marginBottom:"12px", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(8px)", borderRadius:"10px", padding:"8px 12px", border:"1px solid rgba(34,211,168,0.3)" }}>
-                          <span style={{ fontSize:"9px", color:"#22d3a8", fontWeight:700 }}>✦ Generating: </span>
-                          <span style={{ fontSize:"9px", color:"#e5e5e5", fontFamily:"monospace" }}>
-                            {aiPromptText}<span style={{ animation:"pulse 0.8s infinite", color:"#22d3a8" }}>|</span>
-                          </span>
-                        </div>
-                      )}
+
 
                       {/* Doc card decoration */}
                       {tool.id === "doc" && (

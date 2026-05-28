@@ -9,7 +9,6 @@ import LogoMaker from "./components/LogoMaker";
 import SocialStudio from "./components/SocialStudio";
 import Documents from "./components/Documents";
 import PrintDesign from "./components/PrintDesign";
-import AiMagic from "./components/AiMagic";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -23,7 +22,6 @@ export default function App() {
   const [activeSocialProject, setActiveSocialProject] = useState(null);
   const [activeDocProject, setActiveDocProject] = useState(null);
   const [activePrintProject, setActivePrintProject] = useState(null);
-  const [activeAiProject, setActiveAiProject] = useState(null);
 
   // Sync theme setting to body/root styles for seamless app-wide integration
   useEffect(() => {
@@ -131,12 +129,6 @@ export default function App() {
     } else if (page === "print_design") {
       setActivePrintProject(null);
       setCurrentPage("print_design");
-    } else if (page === "ai_magic_load") {
-      setActiveAiProject(data);
-      setCurrentPage("ai_magic");
-    } else if (page === "ai_magic") {
-      setActiveAiProject(null);
-      setCurrentPage("ai_magic");
     } else {
       setCurrentPage(page);
     }
@@ -231,16 +223,6 @@ export default function App() {
         onBack={() => setCurrentPage("home")}
         user={user}
         initialProject={activePrintProject}
-      />
-    );
-  }
-
-  if (currentPage === "ai_magic") {
-    return (
-      <AiMagic
-        onBack={() => setCurrentPage("home")}
-        user={user}
-        initialProject={activeAiProject}
       />
     );
   }
