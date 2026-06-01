@@ -7,6 +7,7 @@ import ExportModal from "./ExportModal";
 export default function VideoEditor({ onBack, user, initialProject }) {
   const [state, dispatch] = useEditorState();
   const [showExport, setShowExport]               = useState(false);
+  const [exportUrl, setExportUrl]                 = useState(null);
   const [showAddMenu, setShowAddMenu]             = useState(false);
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [leftTab, setLeftTab]                     = useState("media");
@@ -19,6 +20,7 @@ export default function VideoEditor({ onBack, user, initialProject }) {
   const timelineRef      = useRef(null);
   const playIntervalRef  = useRef(null);
   const fileInputRef     = useRef(null);
+  const jsonInputRef     = useRef(null);
   const fileInputTypeRef = useRef("video");
   const videoRef         = useRef(null);
 
@@ -360,10 +362,190 @@ export default function VideoEditor({ onBack, user, initialProject }) {
     if (presets[name]) Object.entries(presets[name]).forEach(([key, value]) => dispatch({ type: "SET_FILTER", key, value }));
   };
 
-  const simulateExport = () => {
+  const exportProjectJson = () => {
+    const projectData = {
+      title: projectTitle,
+      tracks: state.tracks,
+      duration: state.duration,
+      brightness: state.brightness,
+      contrast: state.contrast,
+      saturation: state.saturation,
+      hue: state.hue,
+      opacity: state.opacity,
+      playbackSpeed: state.playbackSpeed,
+      blur: state.blur,
+      sharpen: state.sharpen,
+      vignette: state.vignette
+    };
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${projectTitle.replace(/\s+/g, "_")}_project.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importProjectJson = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.tracks) {
+          dispatch({ type: "LOAD_PROJECT", projectState: data });
+          if (data.title) setProjectTitle(data.title);
+        }
+      } catch (err) {
+        alert("Invalid project file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const performRealExport = async () => {
     setShowExport(true);
-    let p = 0; dispatch({ type: "SET_EXPORT_PROGRESS", value: 0 });
-    const iv = setInterval(() => { p += Math.random()*8+2; if (p>=100){p=100;clearInterval(iv);} dispatch({type:"SET_EXPORT_PROGRESS",value:Math.min(100,p)}); }, 120);
+    dispatch({ type: "SET_EXPORT_PROGRESS", value: 0 });
+    setExportUrl(null);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1280;
+    canvas.height = 720;
+    const ctx = canvas.getContext("2d");
+
+    const stream = canvas.captureStream(30);
+    
+    let options = { mimeType: 'video/webm;codecs=vp8' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: 'video/webm' };
+    }
+    
+    const chunks = [];
+    const recorder = new MediaRecorder(stream, options);
+    
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+    
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      setExportUrl(url);
+      dispatch({ type: "SET_EXPORT_PROGRESS", value: 100 });
+    };
+
+    recorder.start();
+
+    const totalDuration = Math.min(state.duration || 60, 60); // cap export to max 60s for speed/memory safety
+    const fps = 20;
+    const totalFrames = Math.ceil(totalDuration * fps);
+    const timeStep = 1 / fps;
+
+    const clips = state.tracks.flatMap(t => t.clips);
+    const videoClips = clips.filter(c => c.type === 'video');
+    const imageClips = clips.filter(c => c.type === 'image');
+    
+    const loadedImages = {};
+    for (const c of imageClips) {
+      if (c.imageEl) {
+        loadedImages[c.id] = c.imageEl;
+      } else {
+        const img = new Image();
+        img.src = c.url;
+        await new Promise((res) => { img.onload = res; img.onerror = res; });
+        loadedImages[c.id] = img;
+      }
+    }
+
+    const activeVideoElements = {};
+    for (const c of videoClips) {
+      const v = document.createElement("video");
+      v.src = c.url;
+      v.muted = true;
+      v.playsInline = true;
+      v.crossOrigin = "anonymous";
+      await new Promise((res) => { 
+        v.onloadedmetadata = res; 
+        v.onerror = res;
+        setTimeout(res, 1000);
+      });
+      activeVideoElements[c.id] = v;
+    }
+
+    // Capture frames sequentially
+    for (let i = 0; i < totalFrames; i++) {
+      const currentTimeCode = i * timeStep;
+      dispatch({ type: "SET_EXPORT_PROGRESS", value: (i / totalFrames) * 95 });
+
+      ctx.fillStyle = "#0c0a09";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const currentActiveClips = clips.filter(c => c.start <= currentTimeCode && c.start + c.duration > currentTimeCode);
+
+      for (const c of currentActiveClips) {
+        if (c.type === 'image' && loadedImages[c.id]) {
+          ctx.save();
+          ctx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturation}%) hue-rotate(${state.hue}deg) opacity(${state.opacity}%) blur(${state.blur}px)`;
+          ctx.drawImage(loadedImages[c.id], 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        } else if (c.type === 'video' && activeVideoElements[c.id]) {
+          const v = activeVideoElements[c.id];
+          const offsetTime = currentTimeCode - c.start;
+          v.currentTime = Math.min(v.duration, Math.max(0, offsetTime));
+          await new Promise((res) => {
+            v.onseeked = res;
+            setTimeout(res, 50);
+          });
+          
+          ctx.save();
+          ctx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturation}%) hue-rotate(${state.hue}deg) opacity(${state.opacity}%) blur(${state.blur}px)`;
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+      }
+
+      if (state.vignette > 0) {
+        const gradient = ctx.createRadialGradient(
+          canvas.width / 2, canvas.height / 2, 10,
+          canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) / 1.5
+        );
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, `rgba(0,0,0,${state.vignette / 100})`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const activeTextClips = clips.filter(c => c.type === 'text' && c.start <= currentTimeCode && c.start + c.duration > currentTimeCode);
+      for (const c of activeTextClips) {
+        ctx.save();
+        ctx.font = `600 32px 'Poppins', sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#d4a574';
+        ctx.lineWidth = 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const textX = canvas.width / 2;
+        const textY = canvas.height * 0.86;
+        
+        const textWidth = ctx.measureText(c.text).width;
+        ctx.fillStyle = 'rgba(10, 8, 7, 0.88)';
+        ctx.beginPath();
+        ctx.roundRect(textX - textWidth / 2 - 20, textY - 25, textWidth + 40, 50, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(c.text, textX, textY);
+        ctx.restore();
+      }
+
+      await new Promise(r => setTimeout(r, 5));
+    }
+
+    recorder.stop();
   };
 
   // ── CSS filter string ────────────────────────────────────────────────
@@ -699,6 +881,14 @@ export default function VideoEditor({ onBack, user, initialProject }) {
               Exit
             </button>
 
+            <input ref={jsonInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={importProjectJson} />
+            <button className="tool-btn" onClick={() => jsonInputRef.current.click()} title="Import Project (.json)" style={{ padding: "5px 10px", fontSize: "11px", gap: "5px" }}>
+              📥 Import JSON
+            </button>
+            <button className="tool-btn" onClick={exportProjectJson} title="Backup Project (.json)" style={{ padding: "5px 10px", fontSize: "11px", gap: "5px", marginRight: "8px" }}>
+              💾 Export JSON
+            </button>
+
             <div style={{ width:"1px", height:"16px", background:"rgba(212,165,116,0.15)", marginRight:"12px" }} />
 
             {/* Tool selector group */}
@@ -737,7 +927,7 @@ export default function VideoEditor({ onBack, user, initialProject }) {
             <div style={{ flex: 1 }} />
 
             {/* Export button */}
-            <button className="tool-btn primary" onClick={simulateExport} style={{ padding:"6px 16px", gap:"6px", fontSize:"12.5px", marginRight:"12px" }}>
+            <button className="tool-btn primary" onClick={performRealExport} style={{ padding:"6px 16px", gap:"6px", fontSize:"12.5px", marginRight:"12px" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Export
             </button>
@@ -762,7 +952,7 @@ export default function VideoEditor({ onBack, user, initialProject }) {
         </div>
       </div>
 
-      <ExportModal show={showExport} progress={state.exportProgress} onClose={() => { setShowExport(false); dispatch({ type:"SET_EXPORT_PROGRESS", value:null }); }} />
+      <ExportModal show={showExport} progress={state.exportProgress} downloadUrl={exportUrl} fileName={`${projectTitle.replace(/\s+/g, "_")}.webm`} onClose={() => { setShowExport(false); dispatch({ type:"SET_EXPORT_PROGRESS", value:null }); }} />
 
       {/* Leave Confirmation Modal */}
       {showLeaveModal && (
