@@ -40,6 +40,137 @@ export default function SocialStudio({ onBack, user, initialProject }) {
     }
   }, [initialProject]);
 
+  const isDraggingRef = useRef(false);
+  const activeDragLayerIdRef = useRef(null);
+  const dragStartPosRef = useRef({ offsetX: 0, offsetY: 0 });
+  const containerRectRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingRef.current || !activeDragLayerIdRef.current || !containerRectRef.current) return;
+      
+      const rect = containerRectRef.current;
+      const mouseXPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const mouseYPercent = ((e.clientY - rect.top) / rect.height) * 100;
+      
+      let newX = Math.round(mouseXPercent - dragStartPosRef.current.offsetX);
+      let newY = Math.round(mouseYPercent - dragStartPosRef.current.offsetY);
+      
+      newX = Math.max(-20, Math.min(120, newX));
+      newY = Math.max(-20, Math.min(120, newY));
+      
+      setLayers(prev => prev.map(l => {
+        if (l.id === activeDragLayerIdRef.current) {
+          return { ...l, x: newX, y: newY };
+        }
+        return l;
+      }));
+    };
+    
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      activeDragLayerIdRef.current = null;
+    };
+    
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [layers]);
+
+  const handleLayerMouseDown = (e, layerId) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setActiveLayerId(layerId);
+    isDraggingRef.current = true;
+    activeDragLayerIdRef.current = layerId;
+    
+    const container = e.currentTarget.closest(".social-canvas-container");
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    containerRectRef.current = rect;
+    
+    const layer = layers.find(l => l.id === layerId);
+    if (layer) {
+      const clickXPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const clickYPercent = ((e.clientY - rect.top) / rect.height) * 100;
+      dragStartPosRef.current = {
+        offsetX: clickXPercent - layer.x,
+        offsetY: clickYPercent - layer.y
+      };
+    }
+  };
+
+  const downloadPlatformPost = (key) => {
+    const platform = PLATFORMS[key];
+    if (!platform) return;
+    
+    let exportW = 1080;
+    let exportH = 1080;
+    if (key === "reels") {
+      exportW = 1080;
+      exportH = 1920;
+    } else if (key === "youtube") {
+      exportW = 1920;
+      exportH = 1080;
+    } else if (key === "facebook") {
+      exportW = 1600;
+      exportH = 500;
+    }
+    
+    const canvas = document.createElement("canvas");
+    canvas.width = exportW;
+    canvas.height = exportH;
+    const ctx = canvas.getContext("2d");
+    
+    const grad = ctx.createLinearGradient(0, 0, exportW, exportH);
+    const colorMatches = bgGradient.match(/#[0-9a-fA-F]{6}|rgba?\([^)]+\)/g);
+    if (colorMatches && colorMatches.length >= 2) {
+      colorMatches.forEach((color, idx) => {
+        const stop = idx / (colorMatches.length - 1);
+        grad.addColorStop(stop, color);
+      });
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = "#6366f1";
+    }
+    ctx.fillRect(0, 0, exportW, exportH);
+    
+    layers.forEach(layer => {
+      ctx.save();
+      const pX = (layer.x / 100) * exportW;
+      const pY = (layer.y / 100) * exportH;
+      
+      ctx.translate(pX, pY);
+      
+      ctx.fillStyle = layer.color || "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      
+      const fontSize = layer.size * (exportW / 400);
+      
+      if (layer.type === "text") {
+        const fontFamily = layer.font === "Syne" ? "Syne, sans-serif" : "Poppins, sans-serif";
+        ctx.font = `bold ${fontSize}px ${fontFamily}`;
+        ctx.fillText(layer.text, 0, 0);
+      } else {
+        ctx.font = `${fontSize}px Arial, sans-serif`;
+        ctx.fillText(layer.shape, 0, 0);
+      }
+      ctx.restore();
+    });
+    
+    const imgUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `${projectTitle.replace(/\s+/g, "_")}_${key}.png`;
+    link.href = imgUrl;
+    link.click();
+  };
+
   const addTextLayer = () => {
     const id = `text_${Date.now()}`;
     setLayers(prev => [...prev, { id, type: "text", text: "NEW OVERLAY", x: 50, y: 50, size: 20, color: "#ffffff", font: "Poppins" }]);
@@ -138,16 +269,18 @@ export default function SocialStudio({ onBack, user, initialProject }) {
             <div
               key={layer.id}
               onClick={(e) => { e.stopPropagation(); setActiveLayerId(layer.id); }}
+              onMouseDown={(e) => handleLayerMouseDown(e, layer.id)}
               style={{
                 position: "absolute",
                 left: lX,
                 top: lY,
                 transform: "translate(-50%, -50%)",
-                cursor: "pointer",
+                cursor: "grab",
                 border: isActive ? "1px dashed #f5c842" : "1px dashed transparent",
                 padding: "4px",
                 borderRadius: "4px",
-                transition: "border 0.2s"
+                transition: "border 0.2s",
+                userSelect: "none"
               }}
             >
               {layer.type === "text" ? (
@@ -333,12 +466,33 @@ export default function SocialStudio({ onBack, user, initialProject }) {
                     <span>{platform.ratio}</span>
                   </div>
 
-                  <div style={{ width: `${platform.w}px`, height: `${platform.h}px`, borderRadius: "10px", overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>
+                  <div 
+                    className="social-canvas-container"
+                    style={{ width: `${platform.w}px`, height: `${platform.h}px`, borderRadius: "10px", overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}
+                  >
                     {renderCanvasContent(platform.w, platform.h)}
                   </div>
 
-                  <div style={{ marginTop: "12px", fontSize: "10px", color: "#5c5650" }}>
-                    {platform.desc}
+                  <div style={{ marginTop: "12px", display: "flex", gap: "10px", width: "100%", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "10px", color: "#5c5650" }}>
+                      {platform.desc}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadPlatformPost(key);
+                      }}
+                      className="tool-btn primary"
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "10px",
+                        background: "linear-gradient(135deg,#c49a6c,#8b5a2b)",
+                        border: "none",
+                        color: "#fff"
+                      }}
+                    >
+                      Download PNG
+                    </button>
                   </div>
                 </div>
               );
