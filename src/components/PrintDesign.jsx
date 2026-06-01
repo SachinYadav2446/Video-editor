@@ -124,6 +124,91 @@ export default function PrintDesign({ onBack, user, initialProject }) {
     onBack();
   };
 
+  const exportHighResPNG = () => {
+    const preset = PRINT_PRESETS[activeSize];
+    let exportW = 2480;
+    let exportH = 3508;
+    if (activeSize === "card_h") {
+      exportW = 1004;
+      exportH = 650;
+    } else if (activeSize === "card_v") {
+      exportW = 650;
+      exportH = 1004;
+    }
+    
+    const canvas = document.createElement("canvas");
+    canvas.width = exportW;
+    canvas.height = exportH;
+    const ctx = canvas.getContext("2d");
+    
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, exportW, exportH);
+    
+    layers.forEach(layer => {
+      ctx.save();
+      const pX = (layer.x / 100) * exportW;
+      const pY = (layer.y / 100) * exportH;
+      ctx.translate(pX, pY);
+      
+      ctx.fillStyle = layer.color || "#000000";
+      ctx.strokeStyle = layer.color || "#000000";
+      
+      if (layer.type === "text") {
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const fontFamily = layer.font === "Syne" ? "Syne, sans-serif" : "Poppins, sans-serif";
+        const fontSize = layer.size * (exportW / preset.pxW);
+        ctx.font = `bold ${fontSize}px ${fontFamily}`;
+        ctx.fillText(layer.text, 0, 0);
+      } else if (layer.type === "shape") {
+        const w = layer.w * (exportW / 100);
+        const h = layer.h * (exportH / 100);
+        
+        if (layer.shape === "border") {
+          ctx.lineWidth = 6 * (exportW / 1000);
+          ctx.strokeRect(-w/2, -h/2, w, h);
+          const gap = 12 * (exportW / 1000);
+          ctx.strokeRect(-w/2 + gap, -h/2 + gap, w - gap * 2, h - gap * 2);
+        } else if (layer.shape === "shield") {
+          const path = new Path2D("M 50,5 C 70,5 90,15 90,40 C 90,70 65,90 50,95 C 35,90 10,70 10,40 C 10,15 30,5 50,5 Z");
+          ctx.save();
+          ctx.translate(-w/2, -h/2);
+          ctx.scale(w / 100, h / 100);
+          ctx.fill(path);
+          ctx.restore();
+        } else if (layer.shape === "circle") {
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.min(w, h) / 2, 0, 2 * Math.PI);
+          ctx.fill();
+        } else if (layer.shape === "badge") {
+          const radius = Math.min(w, h) / 2;
+          ctx.lineWidth = 4 * (exportW / 1000);
+          ctx.beginPath();
+          ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+          ctx.stroke();
+          
+          ctx.save();
+          ctx.setLineDash([8, 6]);
+          ctx.beginPath();
+          ctx.arc(0, 0, radius * 0.8, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+    });
+    
+    const pngUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `${projectTitle.replace(/\s+/g, "_")}_highres.png`;
+    link.href = pngUrl;
+    link.click();
+  };
+
+  const triggerPrint = () => {
+    window.print();
+  };
+
   // Dragging event handlers
   const handleMouseDown = (e, layerId) => {
     e.stopPropagation();
@@ -169,6 +254,29 @@ export default function PrintDesign({ onBack, user, initialProject }) {
 
   return (
     <div style={{ background: "#0c0a09", color: "#e5e5e5", fontFamily: "'Poppins',sans-serif", height: "100vh", width: "100vw", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-canvas-sheet, .print-canvas-sheet * {
+            visibility: visible;
+          }
+          .print-canvas-sheet {
+            position: absolute;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          /* Hide bleed lines and safe margins in print output */
+          div[style*="border: 1.5px dashed rgb(239, 68, 68)"],
+          div[style*="border: 1px dashed"] {
+            display: none !important;
+          }
+        }
+      ` }} />
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
 
       {/* Header Toolbar */}
@@ -189,9 +297,17 @@ export default function PrintDesign({ onBack, user, initialProject }) {
           />
         </div>
 
-        <button onClick={handleSaveAndExit} className="tool-btn primary" style={{ background: "linear-gradient(135deg,#8b5a2b,#5c4028)", border: "none", color: "#fff", padding: "6px 16px", fontSize: "12px" }}>
-          Save Layout
-        </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button onClick={exportHighResPNG} className="tool-btn" style={{ border: "1px solid rgba(212,165,116,0.25)", color: "#fff", background: "rgba(255,255,255,0.02)", padding: "6px 14px", fontSize: "12px" }}>
+            Export High-Res PNG
+          </button>
+          <button onClick={triggerPrint} className="tool-btn" style={{ border: "1px solid rgba(212,165,116,0.25)", color: "#fff", background: "rgba(255,255,255,0.02)", padding: "6px 14px", fontSize: "12px" }}>
+            Print / PDF
+          </button>
+          <button onClick={handleSaveAndExit} className="tool-btn primary" style={{ background: "linear-gradient(135deg,#8b5a2b,#5c4028)", border: "none", color: "#fff", padding: "6px 16px", fontSize: "12px" }}>
+            Save Layout
+          </button>
+        </div>
       </div>
 
       {/* Main Studio Body */}
@@ -297,6 +413,7 @@ export default function PrintDesign({ onBack, user, initialProject }) {
             {/* Print canvas sheets */}
             <div
               ref={canvasRef}
+              className="print-canvas-sheet"
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
