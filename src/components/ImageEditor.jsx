@@ -130,6 +130,48 @@ export default function ImageEditor({ onBack, user, initialProject }) {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(layer.text, layer.x, layer.y);
+      } else if (layer.type === "shape") {
+        ctx.fillStyle = layer.color || "#d4a574";
+        ctx.strokeStyle = layer.color || "#d4a574";
+        ctx.lineWidth = 3;
+        const w = layer.width || 80;
+        const h = layer.height || 80;
+        if (layer.shape === "circle") {
+          ctx.beginPath();
+          ctx.arc(layer.x + w/2, layer.y + h/2, w/2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (layer.shape === "rect") {
+          ctx.fillRect(layer.x, layer.y, w, h);
+        } else if (layer.shape === "border") {
+          ctx.strokeRect(layer.x, layer.y, w, h);
+        } else if (layer.shape === "star") {
+          ctx.beginPath();
+          const cx = layer.x + w/2;
+          const cy = layer.y + h/2;
+          const spikes = 5;
+          const outerRadius = w/2;
+          const innerRadius = w/4;
+          let rot = Math.PI / 2 * 3;
+          let xCoords = cx;
+          let yCoords = cy;
+          const step = Math.PI / spikes;
+
+          ctx.moveTo(cx, cy - outerRadius);
+          for (let k = 0; k < spikes; k++) {
+            xCoords = cx + Math.cos(rot) * outerRadius;
+            yCoords = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(xCoords, yCoords);
+            rot += step;
+
+            xCoords = cx + Math.cos(rot) * innerRadius;
+            yCoords = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(xCoords, yCoords);
+            rot += step;
+          }
+          ctx.lineTo(cx, cy - outerRadius);
+          ctx.closePath();
+          ctx.fill();
+        }
       } else if (layer.type === "draw" && layer.canvasEl) {
         // Draw paint strokes layer canvas
         ctx.drawImage(layer.canvasEl, 0, 0);
@@ -147,8 +189,8 @@ export default function ImageEditor({ onBack, user, initialProject }) {
         ctx.lineWidth = 1.5;
         ctx.setLineDash([6, 4]);
         
-        if (activeLayer.type === "image") {
-          ctx.strokeRect(activeLayer.x, activeLayer.y, activeLayer.width, activeLayer.height);
+        if (activeLayer.type === "image" || activeLayer.type === "shape") {
+          ctx.strokeRect(activeLayer.x, activeLayer.y, activeLayer.width || 80, activeLayer.height || 80);
         } else if (activeLayer.type === "text") {
           const textWidth = (activeLayer.text || "").length * (activeLayer.size || 24) * 0.6;
           const textHeight = activeLayer.size || 24;
@@ -179,8 +221,10 @@ export default function ImageEditor({ onBack, user, initialProject }) {
         const layer = layers[i];
         if (!layer.visible) continue;
 
-        if (layer.type === "image") {
-          if (x >= layer.x && x <= layer.x + layer.width && y >= layer.y && y <= layer.y + layer.height) {
+        if (layer.type === "image" || layer.type === "shape") {
+          const w = layer.width || 80;
+          const h = layer.height || 80;
+          if (x >= layer.x && x <= layer.x + w && y >= layer.y && y <= layer.y + h) {
             clickedLayer = layer;
             break;
           }
@@ -309,6 +353,27 @@ export default function ImageEditor({ onBack, user, initialProject }) {
       addStockLayer(event.target.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const [exportFormat, setExportFormat] = useState("png");
+
+  // Add Shape layer
+  const addShapeLayer = (shape) => {
+    const newLayer = {
+      id: `shape_${Date.now()}`,
+      name: `Shape: ${shape}`,
+      type: "shape",
+      shape: shape,
+      color: "#d4a574",
+      visible: true,
+      opacity: 1,
+      x: 250,
+      y: 150,
+      width: 100,
+      height: 100
+    };
+    setLayers(prev => [...prev, newLayer]);
+    setActiveLayerId(newLayer.id);
   };
 
   // Add Text layer
@@ -471,9 +536,14 @@ export default function ImageEditor({ onBack, user, initialProject }) {
   const triggerExport = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const url = canvas.toDataURL("image/png");
+    let url;
+    if (exportFormat === "jpeg") {
+      url = canvas.toDataURL("image/jpeg", 0.9);
+    } else {
+      url = canvas.toDataURL("image/png");
+    }
     const link = document.createElement("a");
-    link.download = `${projectTitle.replace(/\s+/g, "_")}.png`;
+    link.download = `${projectTitle.replace(/\s+/g, "_")}.${exportFormat}`;
     link.href = url;
     link.click();
   };
@@ -537,6 +607,17 @@ export default function ImageEditor({ onBack, user, initialProject }) {
                   </select>
                 </div>
                 <button className="tool-btn" onClick={addTextLayer} style={{ justifyContent: "center", padding: "6px" }}>+ Place Text Layer</button>
+              </div>
+            </div>
+
+            {/* Add Shape element */}
+            <div>
+              <span style={{ fontSize: "10px", color: "#5c5650", display: "block", marginBottom: "8px", fontWeight: 600 }}>ADD SHAPE / STICKER</span>
+              <div style={{ background: "rgba(212,165,116,0.03)", border: "1px solid rgba(212,165,116,0.1)", borderRadius: "10px", padding: "10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                <button className="tool-btn" onClick={() => addShapeLayer("rect")} style={{ fontSize: "11px", padding: "6px", justifyContent: "center" }}>■ Rectangle</button>
+                <button className="tool-btn" onClick={() => addShapeLayer("circle")} style={{ fontSize: "11px", padding: "6px", justifyContent: "center" }}>● Circle</button>
+                <button className="tool-btn" onClick={() => addShapeLayer("border")} style={{ fontSize: "11px", padding: "6px", justifyContent: "center" }}>⚃ Border</button>
+                <button className="tool-btn" onClick={() => addShapeLayer("star")} style={{ fontSize: "11px", padding: "6px", justifyContent: "center" }}>★ Star</button>
               </div>
             </div>
 
@@ -617,6 +698,33 @@ export default function ImageEditor({ onBack, user, initialProject }) {
                           type="number"
                           value={activeLayer.height || 0}
                           onChange={e => updateActiveLayerProp("height", parseInt(e.target.value) || 0)}
+                          style={{ width: "100%", background: "#0c0a09", border: "1px solid rgba(212,165,116,0.15)", borderRadius: "6px", color: "#fff", padding: "6px", fontSize: "11px" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activeLayer.type === "shape" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px" }}>
+                      <div>
+                        <label style={{ fontSize: "9px", color: "#5c5650", display: "block", marginBottom: "3px" }}>Shape Color</label>
+                        <input
+                          type="color"
+                          value={activeLayer.color || "#d4a574"}
+                          onChange={e => updateActiveLayerProp("color", e.target.value)}
+                          style={{ width: "100%", height: "24px", background: "none", border: "none", cursor: "pointer" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: "9px", color: "#5c5650", display: "block", marginBottom: "3px" }}>Size (px)</label>
+                        <input
+                          type="number"
+                          value={activeLayer.width || 80}
+                          onChange={e => {
+                            const val = parseInt(e.target.value) || 10;
+                            updateActiveLayerProp("width", val);
+                            updateActiveLayerProp("height", val);
+                          }}
                           style={{ width: "100%", background: "#0c0a09", border: "1px solid rgba(212,165,116,0.15)", borderRadius: "6px", color: "#fff", padding: "6px", fontSize: "11px" }}
                         />
                       </div>
@@ -711,7 +819,7 @@ export default function ImageEditor({ onBack, user, initialProject }) {
               ))}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               {activeLayerId && (
                 <div style={{ display: "flex", gap: "4px", marginRight: "8px" }}>
                   <button className="tool-btn" onClick={() => adjustLayerPosition("x", -10)} title="Move Left">◀</button>
@@ -720,7 +828,11 @@ export default function ImageEditor({ onBack, user, initialProject }) {
                   <button className="tool-btn" onClick={() => adjustLayerPosition("x", 10)} title="Move Right">▶</button>
                 </div>
               )}
-              <button className="tool-btn primary" onClick={triggerExport}>Download PNG</button>
+              <select value={exportFormat} onChange={e => setExportFormat(e.target.value)} style={{ background: "#0c0a09", color: "#fff", border: "1px solid rgba(212,165,116,0.2)", borderRadius: "6px", fontSize: "11px", padding: "6px", outline: "none", cursor: "pointer" }}>
+                <option value="png">PNG Format</option>
+                <option value="jpeg">JPEG Format</option>
+              </select>
+              <button className="tool-btn primary" onClick={triggerExport}>Download</button>
             </div>
           </div>
 
