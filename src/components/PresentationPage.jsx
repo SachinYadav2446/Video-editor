@@ -411,17 +411,413 @@ export default function PresentationPage({ onBack, user, initialPresentation }) 
     updateSlideContent("bulletPoints", updatedBullets);
   };
 
-  const triggerExport = () => {
-    setExportProgress(0);
-    let p = 0;
-    const interval = setInterval(() => {
-      p += Math.random() * 8 + 3;
-      if (p >= 100) {
-        p = 100;
-        clearInterval(interval);
+  const exportHTMLSlideshow = () => {
+    const currentTheme = PRESENTATION_THEMES[themeIdx];
+    let htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>\${projectTitle}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Syne:wght@700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&family=Inter:wght@400;700;900&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html {
+      background: #000;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .slide-deck {
+      width: 100%;
+      max-width: 1100px;
+      aspect-ratio: 16/9;
+      position: relative;
+    }
+    .slide {
+      display: none;
+      width: 100%;
+      height: 100%;
+      border-radius: 20px;
+      padding: 8%;
+      box-sizing: border-box;
+      position: relative;
+      background: ${currentTheme.bg};
+      color: ${currentTheme.text};
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.8);
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .slide.active {
+      display: flex;
+    }
+    .ornament-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .title-layout {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      z-index: 2;
+    }
+    .title-layout h1 {
+      font-family: "${getThemeHeaderFont(currentTheme.archetype)}";
+      font-size: 3.6rem;
+      font-weight: 800;
+      color: ${currentTheme.primary};
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+    .title-layout p {
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+      font-size: 1.4rem;
+      opacity: 0.85;
+      font-weight: 300;
+    }
+    .content-layout {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      flex: 1;
+      text-align: left;
+      z-index: 2;
+    }
+    .content-layout h2 {
+      font-family: "${getThemeHeaderFont(currentTheme.archetype)}";
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: ${currentTheme.primary};
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .content-layout p {
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+      font-size: 1.0rem;
+      opacity: 0.7;
+      margin-bottom: 32px;
+      font-weight: 300;
+    }
+    .content-layout ul {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-left: 24px;
+    }
+    .content-layout li {
+      font-size: 1.2rem;
+      line-height: 1.4;
+      opacity: 0.95;
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+    }
+    .two-column-layout {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      flex: 1;
+      text-align: left;
+      z-index: 2;
+    }
+    .two-column-layout h2 {
+      font-family: "${getThemeHeaderFont(currentTheme.archetype)}";
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: ${currentTheme.primary};
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .two-column-layout p {
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+      font-size: 1.0rem;
+      opacity: 0.7;
+      margin-bottom: 32px;
+      font-weight: 300;
+    }
+    .two-column-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      flex: 1;
+    }
+    .two-column-col-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+    }
+    .two-column-text {
+      font-size: 1.1rem;
+      line-height: 1.5;
+      opacity: 0.85;
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+    }
+    .quote-layout {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      padding: 0 8%;
+      z-index: 2;
+    }
+    .quote-layout span {
+      font-size: 4.5rem;
+      color: ${currentTheme.primary};
+      line-height: 0.1;
+      font-family: serif;
+      display: block;
+      margin-bottom: 20px;
+    }
+    .quote-layout blockquote {
+      font-size: 1.8rem;
+      font-style: italic;
+      font-family: "${getThemeHeaderFont(currentTheme.archetype)}";
+      font-weight: 400;
+      line-height: 1.45;
+      margin-bottom: 24px;
+    }
+    .quote-layout cite {
+      font-size: 1.1rem;
+      color: ${currentTheme.secondary};
+      font-style: normal;
+      font-weight: 600;
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+    }
+    .image-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 40px;
+      align-items: center;
+      flex: 1;
+      z-index: 2;
+    }
+    .image-layout-img-container {
+      border-radius: 16px;
+      overflow: hidden;
+      height: 100%;
+      max-height: 320px;
+      border: 1px solid ${currentTheme.primary}20;
+    }
+    .image-layout img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .image-layout-text {
+      text-align: left;
+    }
+    .image-layout-text h3 {
+      font-family: "${getThemeHeaderFont(currentTheme.archetype)}";
+      font-size: 2rem;
+      font-weight: 700;
+      color: ${currentTheme.primary};
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .image-layout-text p {
+      font-family: "${getThemeBodyFont(currentTheme.archetype)}";
+      font-size: 1.2rem;
+      line-height: 1.45;
+      opacity: 0.9;
+      font-weight: 300;
+      margin-bottom: 20px;
+    }
+    .floating-element {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .branding {
+      position: absolute;
+      bottom: 24px;
+      right: 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0.5;
+    }
+    .branding-sub {
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    .branding-main {
+      font-size: 12px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+    }
+    .counter {
+      position: absolute;
+      bottom: 32px;
+      left: 32px;
+      color: #8c8780;
+      font-size: 12px;
+    }
+    .controls {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+    .nav-badge {
+      font-size: 11px;
+      color: #8c8780;
+      background: rgba(0,0,0,0.8);
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <span class="nav-badge">Present Mode · Use Arrow keys or Space</span>
+  </div>
+  
+  <div class="slide-deck">
+`;
+
+    slides.forEach((slide, idx) => {
+      const isActive = idx === 0 ? "active" : "";
+      htmlContent += `    <div class="slide \${isActive}" id="slide_\${slide.id}">\n`;
+      
+      if (currentTheme.archetype === "editorial") {
+        htmlContent += `      <div class="ornament-grid" style="border: 1px solid ${currentTheme.primary}20; inset: 12px;"></div>\n`;
+      } else if (currentTheme.archetype === "cyber") {
+        htmlContent += `      <div class="ornament-grid" style="border-top: 2px solid ${currentTheme.primary}; border-left: 2px solid ${currentTheme.primary}; width: 14px; height: 14px; top: 12px; left: 12px; position: absolute;"></div>\n`;
       }
-      setExportProgress(Math.min(100, p));
-    }, 100);
+
+      if (slide.layout === "title") {
+        htmlContent += `      <div class="title-layout">
+        <h1>\${slide.title || "Headline Title"}</h1>
+        <p>\${slide.subtitle || "Subheading detail block"}</p>
+      </div>\n`;
+      } else if (slide.layout === "content") {
+        htmlContent += `      <div class="content-layout">
+        <h2>\${slide.title || "Section Header"}</h2>
+        <p>\${slide.subtitle || "Optional section subtitle details..."}</p>
+        <ul>
+          \${(slide.bulletPoints || []).map(bp => \`<li>\${bp}</li>\`).join("\\n          ")}
+        </ul>
+      </div>\n`;
+      } else if (slide.layout === "two-column") {
+        htmlContent += `      <div class="two-column-layout">
+        <h2>\${slide.title || "Comparative Columns"}</h2>
+        <p>\${slide.subtitle || "Optional section subtitle details..."}</p>
+        <div class="two-column-columns">
+          <div>
+            <div class="two-column-col-title" style="color: ${currentTheme.primary};">COLUMN ALPHA</div>
+            <div class="two-column-text">\${slide.bulletPoints?.[0] || ""}</div>
+          </div>
+          <div>
+            <div class="two-column-col-title" style="color: ${currentTheme.secondary};">COLUMN BETA</div>
+            <div class="two-column-text">\${slide.bulletPoints?.[2] || ""}</div>
+          </div>
+        </div>
+      </div>\n`;
+      } else if (slide.layout === "quote") {
+        htmlContent += `      <div class="quote-layout">
+        <span>“</span>
+        <blockquote>\${slide.quote || ""}</blockquote>
+        <cite>— \${slide.author || "Anonymous"}</cite>
+      </div>\n`;
+      } else if (slide.layout === "image") {
+        htmlContent += `      <div class="image-layout">
+        <div class="image-layout-img-container">
+          <img src="\${slide.image || "https://picsum.photos/id/180/600/400"}" />
+        </div>
+        <div class="image-layout-text">
+          <h3>\${slide.title || ""}</h3>
+          <p>\${slide.subtitle || ""}</p>
+        </div>
+      </div>\n`;
+      } else {
+        htmlContent += `      <div></div>\n`;
+      }
+
+      (slide.elements || []).forEach(el => {
+        let elHtml = "";
+        if (el.type === "text") {
+          elHtml = `<div style="color: \${el.color || currentTheme.text}; font-size: \${(el.fontSize || 16) * 1.3}px; font-family: \${el.fontFamily || getThemeBodyFont(currentTheme.archetype)}; text-align: \${el.align || "center"}; font-weight: \${el.fontWeight || "normal"}; font-style: \${el.fontStyle || "normal"}; width: 100%; height: 100%; word-break: break-word;">\${el.text}</div>`;
+        } else if (el.type === "shape") {
+          if (el.shapeType === "rect") {
+            elHtml = `<div style="width: 100%; height: 100%; background: \${el.color}; border-radius: \${el.borderRadius || 0}px;"></div>`;
+          } else if (el.shapeType === "circle") {
+            elHtml = `<div style="width: 100%; height: 100%; background: \${el.color}; border-radius: 50%;"></div>`;
+          } else if (el.shapeType === "triangle") {
+            elHtml = `<svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,0 100,100 0,100" fill="\${el.color}" /></svg>`;
+          } else if (el.shapeType === "star") {
+            elHtml = `<svg width="100%" height="100%" viewBox="0 0 24 24" fill="\${el.color}"><path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.4 8.168L12 18.896l-7.334 3.857 1.4-8.168L.132 9.21l8.2-1.192z"/></svg>`;
+          } else if (el.shapeType === "line") {
+            elHtml = `<div style="width: 100%; height: 4px; background: \${el.color};"></div>`;
+          }
+        } else if (el.type === "sticker") {
+          elHtml = `<div style="font-size: \${(el.fontSize || 16) * 3}px; line-height: 1;">\${el.stickerIcon}</div>`;
+        } else if (el.type === "image") {
+          elHtml = `<div style="width: 100%; height: 100%; border-radius: \${el.borderRadius || 0}px; overflow: hidden;"><img src="\${el.imageUrl}" style="width: 100%; height: 100%; object-fit: cover;" /></div>`;
+        }
+
+        htmlContent += `      <div class="floating-element" style="left: \${el.x}%; top: \${el.y}%; width: \${el.w}%; height: \${el.h}%; transform: rotate(\${el.rotation || 0}deg); opacity: \${el.opacity ?? 1}; z-index: \${el.zIndex || 10};">
+        \${elHtml}
+      </div>\n`;
+      });
+
+      htmlContent += `      <div class="branding">
+        <span class="branding-sub">POWERED BY</span>
+        <span class="branding-main">Creatify</span>
+      </div>\n`;
+
+      htmlContent += `      <div class="counter">\${idx + 1} / \${slides.length}</div>\n`;
+      htmlContent += `    </div>\n`;
+    });
+
+    htmlContent += `  </div>\n`;
+    
+    htmlContent += `  <script>
+    let currentIdx = 0;
+    const slides = document.querySelectorAll('.slide');
+    function showSlide(idx) {
+      slides[currentIdx].classList.remove('active');
+      slides[idx].classList.add('active');
+      currentIdx = idx;
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        if (currentIdx < slides.length - 1) showSlide(currentIdx + 1);
+      } else if (e.key === 'ArrowLeft') {
+        if (currentIdx > 0) showSlide(currentIdx - 1);
+      }
+    });
+  </script>\n</body>\n</html>`;
+
+    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = `\${projectTitle.replace(/\\s+/g, "_")}.html`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const triggerExport = () => {
+    window.print();
   };
 
   // ── Element Engine Operations ─────────────────────────────────────────────
@@ -747,6 +1143,32 @@ export default function PresentationSlide() {
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box}
         body,html{height:100%;width:100%;overflow:hidden;background:#0c0a09}
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-presentation-wrapper, .print-presentation-wrapper * {
+            visibility: visible;
+          }
+          .print-presentation-wrapper {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            display: block !important;
+          }
+          .print-slide {
+            page-break-after: always;
+            width: 100vw !important;
+            height: 56.25vw !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 8% !important;
+            box-sizing: border-box;
+            position: relative;
+          }
+        }
         ::-webkit-scrollbar{width:6px;height:6px}
         ::-webkit-scrollbar-track{background:#0c0a09}
         ::-webkit-scrollbar-thumb{background:rgba(212,165,116,0.2);border-radius:3px}
@@ -1119,6 +1541,9 @@ export default function PresentationSlide() {
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     <label style={{ fontSize: "9px", color: "#8c8780" }}>DOWNLOAD PRESENTATION</label>
+                    <button className="tool-btn primary" style={{ justifyContent: "center", width: "100%", marginBottom: "6px" }} onClick={exportHTMLSlideshow}>
+                      Export Offline HTML Deck
+                    </button>
                     <button className="tool-btn" style={{ justifyContent: "center", width: "100%" }} onClick={triggerExport}>
                       Compile PDF Deck
                     </button>
@@ -2078,6 +2503,168 @@ export default function PresentationSlide() {
           </div>
         </div>
       )}
+
+      {/* Printable slideshow wrapper container */}
+      <div className="print-presentation-wrapper" style={{ display: "none" }}>
+        {slides.map((slide, idx) => (
+          <div 
+            key={slide.id} 
+            className="print-slide"
+            style={{
+              width: "100%",
+              aspectRatio: "16/9",
+              background: theme.bg,
+              color: theme.text,
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: "8%",
+              boxSizing: "border-box"
+            }}
+          >
+            {renderThemeOrnaments(theme.archetype, theme.primary, theme.secondary, theme.text)}
+            
+            {slide.layout === "title" && (
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, textAlign: "center", zIndex: 2 }}>
+                <h1 style={{ fontFamily: getThemeHeaderFont(theme.archetype), fontSize: "3.6rem", fontWeight: 800, color: theme.primary, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: "24px" }}>
+                  {slide.title}
+                </h1>
+                <p style={{ fontFamily: getThemeBodyFont(theme.archetype), fontSize: "1.4rem", opacity: 0.85, fontWeight: 300 }}>
+                  {slide.subtitle}
+                </p>
+              </div>
+            )}
+
+            {slide.layout === "content" && (
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", flex: 1, textAlign: "left", zIndex: 2 }}>
+                <h2 style={{ fontFamily: getThemeHeaderFont(theme.archetype), fontSize: "2.4rem", fontWeight: 700, color: theme.primary, letterSpacing: "-0.02em", marginBottom: "8px" }}>
+                  {slide.title}
+                </h2>
+                <p style={{ fontFamily: getThemeBodyFont(theme.archetype), fontSize: "1.0rem", opacity: 0.7, marginBottom: "32px", fontWeight: 300 }}>
+                  {slide.subtitle}
+                </p>
+                <ul style={{ display: "flex", flexDirection: "column", gap: "16px", paddingLeft: "24px" }}>
+                  {(slide.bulletPoints || []).map((bp, i) => (
+                    <li key={i} style={{ fontSize: "1.2rem", lineHeight: 1.4, opacity: 0.95, fontFamily: getThemeBodyFont(theme.archetype) }}>
+                      {bp}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {slide.layout === "two-column" && (
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", flex: 1, textAlign: "left", zIndex: 2 }}>
+                <h2 style={{ fontFamily: getThemeHeaderFont(theme.archetype), fontSize: "2.4rem", fontWeight: 700, color: theme.primary, letterSpacing: "-0.02em", marginBottom: "8px" }}>
+                  {slide.title}
+                </h2>
+                <p style={{ fontFamily: getThemeBodyFont(theme.archetype), fontSize: "1.0rem", opacity: 0.7, marginBottom: "32px", fontWeight: 300 }}>
+                  {slide.subtitle}
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px", flex: 1 }}>
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: theme.primary, letterSpacing: "0.08em", marginBottom: "10px", textTransform: "uppercase", fontFamily: getThemeBodyFont(theme.archetype) }}>COLUMN ALPHA</div>
+                    <p style={{ fontSize: "1.1rem", lineHeight: 1.5, opacity: 0.85, fontFamily: getThemeBodyFont(theme.archetype) }}>
+                      {slide.bulletPoints?.[0] || ""}
+                    </p>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: theme.secondary, letterSpacing: "0.08em", marginBottom: "10px", textTransform: "uppercase", fontFamily: getThemeBodyFont(theme.archetype) }}>COLUMN BETA</div>
+                    <p style={{ fontSize: "1.1rem", lineHeight: 1.5, opacity: 0.85, fontFamily: getThemeBodyFont(theme.archetype) }}>
+                      {slide.bulletPoints?.[2] || ""}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {slide.layout === "quote" && (
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: 1, textAlign: "center", padding: "0 8%", zIndex: 2 }}>
+                <span style={{ fontSize: "4.5rem", color: theme.primary, lineHeight: 0.1, fontFamily: "serif", display: "block", marginBottom: "20px" }}>“</span>
+                <blockquote style={{ fontSize: "1.8rem", fontStyle: "italic", fontFamily: getThemeHeaderFont(theme.archetype), fontWeight: 400, lineHeight: 1.45, marginBottom: "24px" }}>
+                  {slide.quote}
+                </blockquote>
+                <cite style={{ fontSize: "1.1rem", color: theme.secondary, fontStyle: "normal", fontWeight: 600, fontFamily: getThemeBodyFont(theme.archetype) }}>
+                  — {slide.author || "Anonymous"}
+                </cite>
+              </div>
+            )}
+
+            {slide.layout === "image" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: "40px", alignItems: "center", flex: 1, zIndex: 2 }}>
+                <div style={{ borderRadius: "16px", overflow: "hidden", height: "100%", maxHeight: "320px", border: `1px solid ${theme.primary}20` }}>
+                  <img src={slide.image || "https://picsum.photos/id/180/600/400"} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <div style={{ textAlign: "left" }}>
+                  <h3 style={{ fontFamily: getThemeHeaderFont(theme.archetype), fontSize: "2rem", fontWeight: 700, color: theme.primary, letterSpacing: "-0.02em", marginBottom: "12px" }}>
+                    {slide.title}
+                  </h3>
+                  <p style={{ fontFamily: getThemeBodyFont(theme.archetype), fontSize: "1.2rem", lineHeight: 1.45, opacity: 0.9, fontWeight: 300, marginBottom: "20px" }}>
+                    {slide.subtitle}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Custom floating elements */}
+            {(slide.elements || []).map((el) => {
+              const elementStyle = {
+                position: "absolute",
+                left: `${el.x}%`,
+                top: `${el.y}%`,
+                width: `${el.w}%`,
+                height: `${el.h}%`,
+                zIndex: el.zIndex || 10,
+                opacity: el.opacity ?? 1,
+                transform: `rotate(${el.rotation || 0}deg)`,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: el.align === "left" ? "flex-start" : el.align === "right" ? "flex-end" : "center",
+                boxSizing: "border-box"
+              };
+
+              return (
+                <div key={el.id} style={elementStyle}>
+                  {el.type === "text" && (
+                    <div style={{ color: el.color || theme.text, fontSize: `${(el.fontSize || 16) * 1.3}px`, fontFamily: el.fontFamily || getThemeBodyFont(theme.archetype), textAlign: el.align || "center", fontWeight: el.fontWeight || "normal", fontStyle: el.fontStyle || "normal", width: "100%", height: "100%", wordBreak: "break-word" }}>
+                      {el.text}
+                    </div>
+                  )}
+                  {el.type === "shape" && (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {el.shapeType === "rect" && <div style={{ width: "100%", height: "100%", background: el.color, borderRadius: `${el.borderRadius || 0}px` }} />}
+                      {el.shapeType === "circle" && <div style={{ width: "100%", height: "100%", background: el.color, borderRadius: "50%" }} />}
+                      {el.shapeType === "triangle" && <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,0 100,100 0,100" fill={el.color} /></svg>}
+                      {el.shapeType === "star" && <svg width="100%" height="100%" viewBox="0 0 24 24" fill={el.color}><path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.4 8.168L12 18.896l-7.334 3.857 1.4-8.168L.132 9.21l8.2-1.192z"/></svg>}
+                      {el.shapeType === "line" && <div style={{ width: "100%", height: "4px", background: el.color }} />}
+                    </div>
+                  )}
+                  {el.type === "sticker" && (
+                    <div style={{ fontSize: `${(el.fontSize || 16) * 3}px`, lineHeight: 1 }}>
+                      {el.stickerIcon}
+                    </div>
+                  )}
+                  {el.type === "image" && (
+                    <div style={{ width: "100%", height: "100%", borderRadius: `${el.borderRadius || 0}px`, overflow: "hidden" }}>
+                      <img src={el.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div style={{ position: "absolute", bottom: "24px", right: "32px", display: "flex", alignItems: "center", gap: "8px", opacity: 0.5 }}>
+              <span style={{ fontSize: "9px", letterSpacing: "0.06em", fontFamily: "'Poppins', sans-serif", fontWeight: 600 }}>POWERED BY</span>
+              <span style={{ fontSize: "12px", fontFamily: "Syne, sans-serif", fontWeight: 800 }}>Creatify</span>
+            </div>
+            <div style={{ position: "absolute", bottom: "32px", left: "32px", color: "#8c8780", fontSize: "12px" }}>
+              {idx + 1} / {slides.length}
+            </div>
+          </div>
+        ))}
+      </div>
 
     </div>
   );
