@@ -422,6 +422,168 @@ export default function LogoMaker({ onBack, user, initialProject }) {
     img.src = url;
   };
 
+  const triggerMockupExport = () => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svgEl);
+    
+    // Remove active selection border overlays
+    source = source.replace(/<rect[^>]*stroke-dasharray="4,?\s*3"[^>]*><\/rect>/g, "");
+    source = source.replace(/<rect[^>]*stroke-dasharray="4,?\s*3"[^>]*\/>/g, "");
+
+    const svgBlob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 900;
+      const ctx = canvas.getContext("2d");
+      
+      if (activeMockup === "card") {
+        ctx.fillStyle = "#111111";
+        ctx.fillRect(0, 0, 1200, 900);
+        
+        ctx.save();
+        ctx.translate(600, 450);
+        ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+        ctx.shadowBlur = 40;
+        ctx.shadowOffsetX = 10;
+        ctx.shadowOffsetY = 20;
+        
+        ctx.transform(1, -0.05, 0.1, 0.9, 0, 0);
+        
+        ctx.fillStyle = "#1c1917";
+        ctx.strokeStyle = "#292524";
+        ctx.lineWidth = 4;
+        const cardW = 600;
+        const cardH = 340;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(-cardW/2, -cardH/2, cardW, cardH, 20);
+        } else {
+          ctx.rect(-cardW/2, -cardH/2, cardW, cardH);
+        }
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        const logoSz = 240;
+        ctx.drawImage(img, -logoSz/2, -logoSz/2, logoSz, logoSz);
+        ctx.restore();
+      } else if (activeMockup === "mug") {
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillRect(0, 0, 1200, 900);
+        
+        ctx.save();
+        ctx.translate(600, 450);
+        
+        ctx.beginPath();
+        ctx.ellipse(0, 240, 200, 30, 0, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.fill();
+        
+        ctx.strokeStyle = "#fcfaf2";
+        ctx.lineWidth = 45;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.arc(120, 40, 90, -Math.PI / 2.2, Math.PI / 2.2);
+        ctx.stroke();
+        
+        ctx.strokeStyle = "#f0ede0";
+        ctx.lineWidth = 15;
+        ctx.beginPath();
+        ctx.arc(120, 40, 90, -Math.PI / 2.2, Math.PI / 2.2);
+        ctx.stroke();
+
+        ctx.fillStyle = "#fcfaf2";
+        ctx.beginPath();
+        ctx.ellipse(0, -200, 180, 25, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(-180, -200);
+        ctx.lineTo(-180, 200);
+        ctx.quadraticCurveTo(-180, 240, 0, 240);
+        ctx.quadraticCurveTo(180, 240, 180, 200);
+        ctx.lineTo(180, -200);
+        ctx.closePath();
+        ctx.fill();
+        
+        const grad = ctx.createLinearGradient(-180, 0, 180, 0);
+        grad.addColorStop(0, "rgba(0,0,0,0.12)");
+        grad.addColorStop(0.2, "rgba(255,255,255,0.2)");
+        grad.addColorStop(0.5, "rgba(0,0,0,0)");
+        grad.addColorStop(0.8, "rgba(0,0,0,0.05)");
+        grad.addColorStop(1, "rgba(0,0,0,0.2)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(-180, -200);
+        ctx.lineTo(-180, 200);
+        ctx.quadraticCurveTo(-180, 240, 0, 240);
+        ctx.quadraticCurveTo(180, 240, 180, 200);
+        ctx.lineTo(180, -200);
+        ctx.ellipse(0, -200, 180, 25, 0, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.strokeStyle = "#e2dfd5";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(0, -200, 180, 25, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        const logoSz = 200;
+        ctx.drawImage(img, -logoSz/2, -60, logoSz, logoSz);
+        
+        ctx.restore();
+      } else if (activeMockup === "sticker") {
+        ctx.fillStyle = "#2d3748";
+        ctx.fillRect(0, 0, 1200, 900);
+        
+        ctx.save();
+        ctx.translate(600, 450);
+        
+        ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 15;
+        
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(0, 0, 280, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        ctx.fillStyle = canvasBg === "transparent" ? lastCanvasColor : canvasBg;
+        ctx.beginPath();
+        ctx.arc(0, 0, 250, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        const logoSz = 340;
+        ctx.drawImage(img, -logoSz/2, -logoSz/2, logoSz, logoSz);
+        
+        ctx.restore();
+      }
+      
+      URL.revokeObjectURL(url);
+      
+      const mockupUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `${projectTitle.replace(/\s+/g, "_")}_mockup_${activeMockup}.png`;
+      link.href = mockupUrl;
+      link.click();
+    };
+    img.src = url;
+  };
+
   // Render SVG Elements
   const renderSVGNodes = () => {
     // Helper for star points calculation
@@ -884,12 +1046,20 @@ export default function LogoMaker({ onBack, user, initialProject }) {
             </div>
 
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <button className="tool-btn" onClick={triggerSVGExport} style={{ border: "1px solid rgba(212,165,116,0.25)", color: "#fff", background: "rgba(255,255,255,0.02)", padding: "5px 12px", fontSize: "11px" }}>
-                Export SVG
-              </button>
-              <button className="tool-btn primary" onClick={triggerPNGExport} style={{ background: "linear-gradient(135deg,#8b5a2b,#f5c842)", border: "none", color: "#fff", padding: "5px 12px", fontSize: "11px" }}>
-                Export PNG
-              </button>
+              {activeTab === "mockups" ? (
+                <button className="tool-btn primary" onClick={triggerMockupExport} style={{ background: "linear-gradient(135deg,#8b5a2b,#f5c842)", border: "none", color: "#fff", padding: "5px 12px", fontSize: "11px" }}>
+                  Download Mockup PNG
+                </button>
+              ) : (
+                <>
+                  <button className="tool-btn" onClick={triggerSVGExport} style={{ border: "1px solid rgba(212,165,116,0.25)", color: "#fff", background: "rgba(255,255,255,0.02)", padding: "5px 12px", fontSize: "11px" }}>
+                    Export SVG
+                  </button>
+                  <button className="tool-btn primary" onClick={triggerPNGExport} style={{ background: "linear-gradient(135deg,#8b5a2b,#f5c842)", border: "none", color: "#fff", padding: "5px 12px", fontSize: "11px" }}>
+                    Export PNG
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
