@@ -159,6 +159,72 @@ export default function VideoEditor({ onBack, user, initialProject }) {
     return () => clearInterval(playIntervalRef.current);
   }, [state.isPlaying, state.playhead, state.duration, dispatch, state.tracks, state.playbackSpeed]);
 
+  // ── Audio playback sync engine ──────────────────────────────────────────
+  const audioElementsRef = useRef({});
+
+  // Cleanup audios on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(audioElementsRef.current).forEach(audio => {
+        audio.pause();
+        audio.src = "";
+      });
+    };
+  }, []);
+
+  // Sync audio playback with timeline playhead
+  useEffect(() => {
+    const audioClips = state.tracks
+      .filter(t => t.type === "audio")
+      .flatMap(t => t.clips);
+
+    // Remove old audio tags
+    const activeClipIds = new Set(audioClips.map(c => c.id));
+    Object.keys(audioElementsRef.current).forEach(id => {
+      if (!activeClipIds.has(id)) {
+        const audio = audioElementsRef.current[id];
+        audio.pause();
+        audio.src = "";
+        delete audioElementsRef.current[id];
+      }
+    });
+
+    // Sync playhead state with actual HTML5 Audio playback
+    audioClips.forEach(clip => {
+      let audio = audioElementsRef.current[clip.id];
+      if (!audio) {
+        audio = new Audio(clip.url);
+        audio.crossOrigin = "anonymous";
+        audioElementsRef.current[clip.id] = audio;
+      }
+
+      // Update volume
+      audio.volume = clip.volume ?? 1;
+
+      const offsetTime = state.playhead - clip.start;
+      const isWithinClipRange = offsetTime >= 0 && offsetTime < clip.duration;
+
+      if (state.isPlaying && isWithinClipRange) {
+        // Sync timecode if off by > 0.15s (prevents stuttering on continuous play)
+        if (Math.abs(audio.currentTime - offsetTime) > 0.15) {
+          audio.currentTime = offsetTime;
+        }
+        if (audio.paused) {
+          audio.play().catch(e => console.warn("Audio element failed playing:", e.message));
+        }
+      } else {
+        if (!audio.paused) {
+          audio.pause();
+        }
+        if (isWithinClipRange) {
+          audio.currentTime = offsetTime;
+        } else {
+          audio.currentTime = 0;
+        }
+      }
+    });
+  }, [state.isPlaying, state.playhead, state.tracks]);
+
   // ── Keyboard shortcuts ───────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -416,24 +482,40 @@ export default function VideoEditor({ onBack, user, initialProject }) {
     const ctx = canvas.getContext("2d");
 
     const stream = canvas.captureStream(30);
+
+    // Instantiate client-side Web Audio mixing pipeline
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioDest = audioCtx.createMediaStreamDestination();
+
+    // Merge video track and mixed audio track
+    const combinedTracks = [];
+    stream.getVideoTracks().forEach(t => combinedTracks.push(t));
+    audioDest.stream.getAudioTracks().forEach(t => combinedTracks.push(t));
+    const combinedStream = new MediaStream(combinedTracks);
     
-    let options = { mimeType: 'video/webm;codecs=vp8' };
+    let options = { mimeType: 'video/webm;codecs=vp8,opus' };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
       options = { mimeType: 'video/webm' };
     }
     
     const chunks = [];
-    const recorder = new MediaRecorder(stream, options);
+    const recorder = new MediaRecorder(combinedStream, options);
     
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) chunks.push(e.data);
     };
     
+    const activeSources = [];
+
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setExportUrl(url);
       dispatch({ type: "SET_EXPORT_PROGRESS", value: 100 });
+
+      // Clean up AudioContext & source nodes
+      activeSources.forEach(s => { try { s.stop(); } catch(e) {} });
+      audioCtx.close();
     };
 
     recorder.start();
@@ -446,6 +528,7 @@ export default function VideoEditor({ onBack, user, initialProject }) {
     const clips = state.tracks.flatMap(t => t.clips);
     const videoClips = clips.filter(c => c.type === 'video');
     const imageClips = clips.filter(c => c.type === 'image');
+    const audioClips = clips.filter(c => c.type === 'audio');
     
     const loadedImages = {};
     for (const c of imageClips) {
@@ -472,6 +555,35 @@ export default function VideoEditor({ onBack, user, initialProject }) {
         setTimeout(res, 1000);
       });
       activeVideoElements[c.id] = v;
+    }
+
+    // Schedule all audio & video files' audio to compile inside the AudioContext
+    const allClipsWithAudio = [...audioClips, ...videoClips];
+    for (const c of allClipsWithAudio) {
+      try {
+        const res = await fetch(c.url);
+        if (res.ok) {
+          const arrayBuf = await res.arrayBuffer();
+          const audioBuf = await audioCtx.decodeAudioData(arrayBuf);
+          
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuf;
+          
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.value = c.volume ?? 1;
+          
+          source.connect(gainNode);
+          gainNode.connect(audioDest);
+          
+          // Connect to destination if you want to preview-hear it during export (muted by default)
+          // gainNode.connect(audioCtx.destination);
+          
+          source.start(audioCtx.currentTime + c.start);
+          activeSources.push(source);
+        }
+      } catch (err) {
+        console.warn("Could not decode audio channel for clip:", c.name, err.message);
+      }
     }
 
     // Capture frames sequentially
