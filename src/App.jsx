@@ -9,6 +9,7 @@ import LogoMaker from "./components/LogoMaker";
 import SocialStudio from "./components/SocialStudio";
 import Documents from "./components/Documents";
 import PrintDesign from "./components/PrintDesign";
+import AiMagic from "./components/AiMagic";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -223,6 +224,15 @@ export default function App() {
         onBack={() => setCurrentPage("home")}
         user={user}
         initialProject={activePrintProject}
+      />
+    );
+  }
+
+  if (currentPage === "ai_magic") {
+    return (
+      <AiMagic
+        onBack={() => setCurrentPage("home")}
+        user={user}
       />
     );
   }

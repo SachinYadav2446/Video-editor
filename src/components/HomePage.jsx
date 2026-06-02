@@ -5,6 +5,7 @@ import videoPrev  from "../assets/images/video_preview.png";
 import pptPrev    from "../assets/images/ppt_preview.png";
 import socialPrev from "../assets/images/social_preview.png";
 import imagePrev  from "../assets/images/image_preview.png";
+import aiPrev     from "../assets/images/ai_preview.png";
 
 export default function HomePage({ onNavigate, user, onSignOut, theme = "light" }) {
   const [hoveredCard, setHoveredCard]         = useState(null);
@@ -523,10 +524,11 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
     { id:"video",  name:"Video Editor",    desc:"Full multi-track timeline with WebGL color grading, audio mixing & in-browser rendering. No uploads needed.", icon:"🎬", color:"#8b5a2b",  tag:"WebGL · WASM",       colSpan:2, rowSpan:2, image: videoPrev  },
     { id:"image",  name:"Image Editor",    desc:"Layers, masks, filters, blend modes. Pro-grade photo editing in your browser.",                               icon:"🖼️", color:"#d4a574",  tag:"Canvas API",          colSpan:1, rowSpan:1, image: imagePrev  },
     { id:"logo",   name:"Logo Maker",      desc:"Vector-based logo studio. AI suggestions, custom icons, SVG export.",                                         icon:"✦",  color:"#f5c842",  tag:"SVG · AI-assisted",   colSpan:1, rowSpan:1, image: null       },
+    { id:"ai",     name:"AI Magic Studio", desc:"AI-powered background removal, prompt-based generative artwork styles, and smart resizing tools.",            icon:"✨",  color:"#a855f7",  tag:"AI · Canvas API",     colSpan:2, rowSpan:1, image: aiPrev      },
     { id:"ppt",    name:"Presentations",   desc:"Slides that animate. Real-time collaboration, 500+ templates, one-click export.",                             icon:"📊", color:"#a0522d",  tag:"PPTX · PDF · HTML5",  colSpan:2, rowSpan:1, image: pptPrev    },
     { id:"social", name:"Social Studio",   desc:"All platform sizes at once. Schedule and auto-publish when you're done.",                                     icon:"📱", color:"#c49a6c",  tag:"Stories · Reels",     colSpan:2, rowSpan:2, image: socialPrev },
     { id:"doc",    name:"Documents",       desc:"Rich docs with embedded media, tables, charts. Beautiful by default.",                                        icon:"📄", color:"#deb887",  tag:"DOCX · PDF",          colSpan:2, rowSpan:1, image: null       },
-    { id:"print",  name:"Print Design",    desc:"Flyers, posters, business cards. CMYK-ready, bleed lines included.",                                          icon:"🖨️", color:"#8b5a2b",  tag:"Print-ready PDF",     colSpan:2, rowSpan:1, image: null       },
+    { id:"print",  name:"Print Design",    desc:"Flyers, posters, business cards. CMYK-ready, bleed lines included.",                                          icon:"🖨️", color:"#8b5a2b",  tag:"Print-ready PDF",     colSpan:4, rowSpan:1, image: null       },
   ];
 
   const pricing = [
@@ -538,6 +540,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
   // ── Gradient fallbacks for cards without images ──────────────────────────
   const cardGradients = {
     logo:  "linear-gradient(135deg, #1a1608 0%, #3d2e07 40%, #f5c84220 100%)",
+    ai:    "linear-gradient(135deg, #180825 0%, #3a0e5b 50%, #a855f720 100%)",
     doc:   "linear-gradient(135deg, #0f1a14 0%, #1b3325 50%, #deb88720 100%)",
     print: "linear-gradient(135deg, #1a0f0f 0%, #3d1a1a 50%, #8b5a2b30 100%)",
   };
@@ -1012,7 +1015,7 @@ export default function HomePage({ onNavigate, user, onSignOut, theme = "light" 
           </div>
 
           {/* Bento Grid */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gridTemplateRows:"repeat(4, 200px)", gap:"16px" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gridTemplateRows:"repeat(5, 200px)", gap:"16px" }}>
             {tools.map(tool => {
               const isHovered = hoveredCard === tool.id;
               return (
